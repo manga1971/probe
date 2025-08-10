@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forma - New Form</title>
+    <meta name="description" content="Create professional forms quickly via voice dictation. An offline, secure productivity app.">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+    <script src="common.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <h1 class="app-title">New Form</h1>
+            <input type="search" id="headerSearchInput" class="header-search-input" placeholder="Search forms..." disabled>
+            <div class="header-actions">
+                <button id="accountSettingsButton" class="icon-button" aria-label="Account Settings">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.33 0-4 .67-4 2v3h8v-3c0-1.33-2.67-2-4-2z"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="metadataAccordion" class="accordion glass-container">
+                <button class="accordion-header">
+                    <h3>Characteristics / Details</h3>
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <div class="accordion-content">
+                    <div class="metadata-fields">
+                        <label for="formTitle">Title:</label>
+                        <input type="text" id="formTitle" placeholder="Form title" autocomplete="off">
+                        
+                        <label for="formClient">Client:</label>
+                        <input type="text" id="formClient" placeholder="Client name" autocomplete="off">
+                        
+                        <label for="formCategory">Category:</label>
+                        <input type="text" id="formCategory" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
+                        
+                        <label for="formStatus">Status:</label>
+                        <select id="formStatus">
+                            <option value="not-started">New</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        
+                        <label for="initialNotes">Notes:</label>
+                        <textarea id="initialNotes" placeholder="Add initial notes here..."></textarea>
+                        
+                        <button id="saveCharacteristicsButton" class="player-button">Save Characteristics</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dictationContainer" class="dictation-container glass-container glass-container-no-padding">
+                <p id="transcriptionContent" class="text-display custom-scrollbar text-display-scroll">Press "Dictate" to start...</p>
+                <div id="formIdentifier" class="form-id-badge"></div>
+                
+                <div class="player-controls-compact">
+                    <div class="dictation-control-buttons">
+                        <button id="dictationButton" class="player-button mic-button-compact">
+                            Dictate
+                        </button>
+                        <button id="pauseButton" class="player-button" style="display: none;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </button>
+                        <button id="stopButton" class="player-button" style="display: none;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6h12v12H6z"/></svg>
+                        </button>
+                        <div id="pulsatingLed" class="pulsating-led"></div>
+                    </div>
+                    <span id="chronometer" class="chronometer">0:00</span>
+                    
+                    <button id="exportButton" class="player-button" disabled>
+                        <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zM8 17h8v2H8zm0-4h8v2H8zm-3-5V3.5L18.5 9H13z"/></svg>
+                    </button>
+                    <button id="editFormButton" class="player-button" disabled>
+                        <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        Edit
+                    </button>
+                    <button id="discardButton" class="player-button button-danger" disabled>
+                        <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+        
+        <nav class="main-navbar glass-container">
+            <div class="navbar-group">
+                <a href="home.html" class="navbar-button">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    <span>Home</span>
+                </a>
+                <a href="index.html" class="navbar-button active">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <span>New Form</span>
+                </a>
+                <a href="my-forms.html" class="navbar-button">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.89 2 1.99 2H20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                    <span>My Forms</span>
+                </a>
+                <a href="form-report.html" class="navbar-button">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.39-1.09-.69-1.71-.93L15 2H9l-.31 2.5c-.62.24-1.19.54-1.71.93l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.39 1.09.69 1.71.93L9 22h6l.31-2.5c.62-.24 1.19-.54 1.71-.93l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+                    <span>Form Report</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
