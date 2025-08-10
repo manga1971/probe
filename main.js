@@ -12,15 +12,17 @@ const formIdentifierBadge = document.getElementById('formIdentifier');
 const dictationButton = document.getElementById('dictationButton');
 const pauseButton = document.getElementById('pauseButton');
 const stopButton = document.getElementById('stopButton');
-const viewEditFormButton = document.getElementById('viewEditFormButton');
-const discardButton = document.getElementById('discardButton');
 const exportButton = document.getElementById('exportButton');
+const editFormButton = document.getElementById('editFormButton');
+const discardButton = document.getElementById('discardButton');
 
-// Metadata fields
+// Metadata fields and save button
 const formTitleInput = document.getElementById('formTitle');
 const formClientInput = document.getElementById('formClient');
 const formCategoryInput = document.getElementById('formCategory');
 const formStatusSelect = document.getElementById('formStatus');
+const initialNotesInput = document.getElementById('initialNotes');
+const saveCharacteristicsButton = document.getElementById('saveCharacteristicsButton');
 
 // Global state variables
 let currentFormId = null;
@@ -30,6 +32,7 @@ let simulatedDictatedText = "";
 let dictationTypingInterval;
 let chronometerInterval;
 let seconds = 0;
+let textToResumeFrom = "";
 
 function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -39,27 +42,42 @@ function generateUUID() {
 }
 
 function updatePlayerUI(state) {
+    const pulsatingLed = document.getElementById('pulsatingLed');
+
     if (state === 'recording') {
         dictationButton.style.display = 'none';
         pauseButton.style.display = 'flex';
         stopButton.style.display = 'flex';
         pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-        pulsatingLed.style.visibility = 'visible';
+        pulsatingLed.classList.add('active');
+
+        editFormButton.disabled = true;
+        discardButton.disabled = true;
+        exportButton.disabled = true;
 
     } else if (state === 'paused') {
         pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>`;
-        pulsatingLed.style.visibility = 'hidden';
+        pulsatingLed.classList.remove('active');
 
     } else { // 'stopped'
         dictationButton.style.display = 'flex';
         pauseButton.style.display = 'none';
         stopButton.style.display = 'none';
-        pulsatingLed.style.visibility = 'hidden';
+        pulsatingLed.classList.remove('active');
         pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
-        // Reset chronometer
         seconds = 0;
         chronometer.textContent = '0:00';
+
+        if (currentFormId && transcriptionContent.textContent.trim().length > 0) {
+            editFormButton.disabled = false;
+            discardButton.disabled = false;
+            exportButton.disabled = false;
+        } else {
+            editFormButton.disabled = true;
+            discardButton.disabled = true;
+            exportButton.disabled = true;
+        }
     }
 }
 
@@ -86,8 +104,8 @@ function startDictationProcess() {
     let textSegments = [
         "Today I had a meeting with the client Popescu. We discussed the investment opportunity in project B. I extracted two important tasks: checking legality and sending an offer by the end of the week. In addition, I noted a question about long-term risks. I will come back with a follow-up tomorrow. This is a very long text to test the scroll functionality of the transcription box. We want to make sure that as the text grows, the scroll bar appears and the text display remains within its designated area. This is a crucial UX feature for long dictations. The application needs to handle continuous input smoothly. The text will continue to expand until it fills the container, forcing the scrollbar to become visible. This ensures the user can always see the latest transcribed text without the container growing indefinitely. This will be an important feature for managers and inspectors who have long recordings. We are almost at the end of the test text. The final line should appear now. And that is the end of the dictated text.",
     ];
-    let fullText = simulatedDictatedText + textSegments[0]; // Continue from where it left off
-    let charIndex = 0;
+    let fullText = textToResumeFrom + textSegments[0];
+    let charIndex = textToResumeFrom.length;
 
     dictationTypingInterval = setInterval(() => {
         if (!isDictating || isPaused || charIndex >= fullText.length) {
@@ -102,7 +120,7 @@ function startDictationProcess() {
         transcriptionContent.textContent = simulatedDictatedText;
         transcriptionContent.scrollTop = transcriptionContent.scrollHeight;
         charIndex++;
-    }, 20); // typing speed
+    }, 20);
 }
 
 function stopDictationProcessAndSave() {
@@ -113,17 +131,10 @@ function stopDictationProcessAndSave() {
 
     if (simulatedDictatedText.trim().length > 0) {
         saveDictatedSegment(simulatedDictatedText);
-        transcriptionContent.textContent = simulatedDictatedText;
-        // simulatedDictatedText = ''; // Keep text to resume if needed
-
-        viewEditFormButton.disabled = false;
-        discardButton.disabled = false;
-        exportButton.disabled = false;
+        textToResumeFrom = simulatedDictatedText;
     } else {
         transcriptionContent.textContent = 'Press "Dictate" to start...';
-        viewEditFormButton.disabled = true;
-        discardButton.disabled = true;
-        exportButton.disabled = true;
+        textToResumeFrom = "";
     }
     updatePlayerUI('stopped');
 }
@@ -159,6 +170,7 @@ async function createOrUpdateFormMetadata() {
         client: formClientInput.value,
         category: formCategoryInput.value,
         status: formStatusSelect.value,
+        notes: initialNotesInput.value, // Save notes from the new field
         createdAt: now.toISOString(),
         lastModified: now.toISOString(),
         segments: [],
@@ -207,9 +219,35 @@ function exportTranscription() {
     }
 }
 
+async function saveCharacteristicsAndCloseAccordion() {
+    // Logic to save metadata fields
+    let allForms = (await idbKeyval.get('formsMetadata')) || [];
+    const formToUpdate = allForms.find(f => f.id === currentFormId);
+
+    if (formToUpdate) {
+        formToUpdate.title = formTitleInput.value;
+        formToUpdate.client = formClientInput.value;
+        formToUpdate.category = formCategoryInput.value;
+        formToUpdate.status = formStatusSelect.value;
+        formToUpdate.notes = initialNotesInput.value;
+        await idbKeyval.set('formsMetadata', allForms);
+        alert('Characteristics saved!');
+    } else {
+        alert('Form not found. Please start dictating first.');
+    }
+
+    // Close the accordion
+    const isExpanded = metadataAccordionContent.classList.contains('expanded');
+    if (isExpanded) {
+        accordionIcon.classList.remove('expanded');
+        metadataAccordionContent.classList.remove('expanded');
+        metadataAccordionContent.style.maxHeight = null;
+    }
+}
+
 // Event Listeners
 dictationButton.addEventListener('click', async () => {
-    if (!isDictating) {
+    if (!currentFormId) {
         await createOrUpdateFormMetadata();
     }
     startDictationProcess();
@@ -231,13 +269,14 @@ stopButton.addEventListener('click', () => {
 
 discardButton.addEventListener('click', () => {
     simulatedDictatedText = '';
+    textToResumeFrom = '';
     transcriptionContent.textContent = 'Press "Dictate" to start...';
     stopDictationProcessAndSave();
 });
 
 exportButton.addEventListener('click', exportTranscription);
 
-viewEditFormButton.addEventListener('click', () => {
+editFormButton.addEventListener('click', () => {
     if (currentFormId) {
         window.location.href = `form-report.html?id=${currentFormId}`;
     }
@@ -254,6 +293,8 @@ metadataAccordionHeader.addEventListener('click', () => {
         metadataAccordionContent.style.maxHeight = metadataAccordionContent.scrollHeight + "px";
     }
 });
+
+saveCharacteristicsButton.addEventListener('click', saveCharacteristicsAndCloseAccordion);
 
 document.addEventListener('DOMContentLoaded', () => {
     const headerSearchInput = document.getElementById('headerSearchInput');
