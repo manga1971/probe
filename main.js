@@ -3,18 +3,19 @@
 // DOM Elements
 const appTitle = document.querySelector('.app-title');
 const transcriptionContent = document.getElementById('transcriptionContent');
-const metadataAccordionHeader = document.querySelector('.accordion-header');
-const metadataAccordionContent = document.querySelector('.accordion-content');
+const detailsAccordionHeader = document.getElementById('detailsAccordionHeader');
+const detailsAccordionContent = document.querySelector('.accordion-content');
 const accordionIcon = document.querySelector('.accordion-icon');
 const formIdentifierBadge = document.getElementById('formIdentifier');
 
 // Player controls for the new compact design
 const dictationButton = document.getElementById('dictationButton');
-const pauseButton = document.getElementById('pauseButton');
-const stopButton = document.getElementById('stopButton');
-const exportButton = document.getElementById('exportButton');
-const editFormButton = document.getElementById('editFormButton');
-const discardButton = document.getElementById('discardButton');
+const pausePlayButton = document.getElementById('pausePlayButton');
+const copyButton = document.getElementById('copyButton');
+const editButton = document.getElementById('editButton');
+const deleteButton = document.getElementById('deleteButton');
+const pulsatingLed = document.getElementById('pulsatingLed');
+const chronometer = document.getElementById('chronometer');
 
 // Metadata fields and save button
 const formTitleInput = document.getElementById('formTitle');
@@ -42,41 +43,37 @@ function generateUUID() {
 }
 
 function updatePlayerUI(state) {
-    const pulsatingLed = document.getElementById('pulsatingLed');
-
     if (state === 'recording') {
         dictationButton.style.display = 'none';
-        pauseButton.style.display = 'flex';
-        stopButton.style.display = 'flex';
-        pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        pausePlayButton.style.display = 'flex';
+        pausePlayButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
         pulsatingLed.classList.add('active');
 
-        editFormButton.disabled = true;
-        discardButton.disabled = true;
-        exportButton.disabled = true;
+        copyButton.disabled = true;
+        editButton.disabled = true;
+        deleteButton.disabled = true;
 
     } else if (state === 'paused') {
-        pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>`;
+        pausePlayButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>`;
         pulsatingLed.classList.remove('active');
 
     } else { // 'stopped'
         dictationButton.style.display = 'flex';
-        pauseButton.style.display = 'none';
-        stopButton.style.display = 'none';
+        pausePlayButton.style.display = 'none';
         pulsatingLed.classList.remove('active');
-        pauseButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        pausePlayButton.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
         seconds = 0;
         chronometer.textContent = '0:00';
 
         if (currentFormId && transcriptionContent.textContent.trim().length > 0) {
-            editFormButton.disabled = false;
-            discardButton.disabled = false;
-            exportButton.disabled = false;
+            copyButton.disabled = false;
+            editButton.disabled = false;
+            deleteButton.disabled = false;
         } else {
-            editFormButton.disabled = true;
-            discardButton.disabled = true;
-            exportButton.disabled = true;
+            copyButton.disabled = true;
+            editButton.disabled = true;
+            deleteButton.disabled = true;
         }
     }
 }
@@ -170,7 +167,7 @@ async function createOrUpdateFormMetadata() {
         client: formClientInput.value,
         category: formCategoryInput.value,
         status: formStatusSelect.value,
-        notes: initialNotesInput.value, // Save notes from the new field
+        notes: initialNotesInput.value,
         createdAt: now.toISOString(),
         lastModified: now.toISOString(),
         segments: [],
@@ -220,7 +217,10 @@ function exportTranscription() {
 }
 
 async function saveCharacteristicsAndCloseAccordion() {
-    // Logic to save metadata fields
+    if (!currentFormId) {
+        await createOrUpdateFormMetadata();
+    }
+    
     let allForms = (await idbKeyval.get('formsMetadata')) || [];
     const formToUpdate = allForms.find(f => f.id === currentFormId);
 
@@ -230,18 +230,16 @@ async function saveCharacteristicsAndCloseAccordion() {
         formToUpdate.category = formCategoryInput.value;
         formToUpdate.status = formStatusSelect.value;
         formToUpdate.notes = initialNotesInput.value;
+        formToUpdate.lastModified = new Date().toISOString();
         await idbKeyval.set('formsMetadata', allForms);
         alert('Characteristics saved!');
-    } else {
-        alert('Form not found. Please start dictating first.');
     }
 
-    // Close the accordion
-    const isExpanded = metadataAccordionContent.classList.contains('expanded');
+    const isExpanded = detailsAccordionContent.classList.contains('expanded');
     if (isExpanded) {
         accordionIcon.classList.remove('expanded');
-        metadataAccordionContent.classList.remove('expanded');
-        metadataAccordionContent.style.maxHeight = null;
+        detailsAccordionContent.classList.remove('expanded');
+        detailsAccordionContent.style.maxHeight = null;
     }
 }
 
@@ -253,7 +251,7 @@ dictationButton.addEventListener('click', async () => {
     startDictationProcess();
 });
 
-pauseButton.addEventListener('click', () => {
+pausePlayButton.addEventListener('click', () => {
     if (isDictating && !isPaused) {
         pauseDictation();
     } else if (isDictating && isPaused) {
@@ -261,36 +259,44 @@ pauseButton.addEventListener('click', () => {
     }
 });
 
-stopButton.addEventListener('click', () => {
-    if (isDictating) {
-        stopDictationProcessAndSave();
-    }
-});
-
-discardButton.addEventListener('click', () => {
-    simulatedDictatedText = '';
-    textToResumeFrom = '';
-    transcriptionContent.textContent = 'Press "Dictate" to start...';
-    stopDictationProcessAndSave();
-});
-
-exportButton.addEventListener('click', exportTranscription);
-
-editFormButton.addEventListener('click', () => {
+editButton.addEventListener('click', () => {
     if (currentFormId) {
         window.location.href = `form-report.html?id=${currentFormId}`;
     }
 });
 
-metadataAccordionHeader.addEventListener('click', () => {
-    const isExpanded = metadataAccordionContent.classList.contains('expanded');
+copyButton.addEventListener('click', async () => {
+    if (currentFormId && transcriptionContent.textContent.trim().length > 0) {
+        try {
+            await navigator.clipboard.writeText(transcriptionContent.textContent);
+            alert('Text copied to clipboard!');
+            // Also save the form when copying
+            await saveDictatedSegment(transcriptionContent.textContent);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            alert('Failed to copy text.');
+        }
+    }
+});
+
+deleteButton.addEventListener('click', () => {
+    if (confirm('Are you sure you want to discard this form?')) {
+        simulatedDictatedText = '';
+        textToResumeFrom = '';
+        transcriptionContent.textContent = 'Press "Dictate" to start...';
+        stopDictationProcessAndSave();
+    }
+});
+
+detailsAccordionHeader.addEventListener('click', () => {
+    const isExpanded = detailsAccordionContent.classList.contains('expanded');
     accordionIcon.classList.toggle('expanded');
-    metadataAccordionContent.classList.toggle('expanded');
+    detailsAccordionContent.classList.toggle('expanded');
     
     if (isExpanded) {
-        metadataAccordionContent.style.maxHeight = null;
+        detailsAccordionContent.style.maxHeight = null;
     } else {
-        metadataAccordionContent.style.maxHeight = metadataAccordionContent.scrollHeight + "px";
+        detailsAccordionContent.style.maxHeight = detailsAccordionContent.scrollHeight + "px";
     }
 });
 
