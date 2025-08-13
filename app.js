@@ -26,21 +26,27 @@ const headerSearchInput = document.getElementById('headerSearchInput');
 let allFormsMetadata = [];
 
 // --- SPA Navigation Logic ---
-function navigateTo(pageId, title, showSearch = false) {
+function setupPage(pageId, title, showSearch = false) {
     showPage(pageId);
     appTitle.textContent = title;
     headerSearchInput.style.display = showSearch ? 'flex' : 'none';
 
     // Update active state of navbar buttons
-    document.querySelectorAll('.navbar-button').forEach(button => {
-        button.classList.remove('active');
-    });
-
     if (pageId === 'my-forms-page') {
         updateNavState('my-forms-nav');
-        resetNewFormState();
     } else if (pageId === 'new-form-page') {
         updateNavState('new-form-nav');
+    }
+}
+
+function navigateTo(pageId, title, showSearch = false) {
+    setupPage(pageId, title, showSearch);
+    if (pageId === 'my-forms-page') {
+        resetNewFormState();
+        loadInitialData();
+        renderFormsList();
+    } else if (pageId === 'new-form-page') {
+        resetNewFormState();
     }
 }
 
@@ -54,8 +60,8 @@ window.deleteForm = async (id) => {
     if (!confirm('Are you sure you want to delete this form? This cannot be undone.')) return;
 
     allFormsMetadata = allFormsMetadata.filter(f => f.id !== id);
-    await idbKeyval.set('formsMetadata', allFormsMetadata);
-    await idbKeyval.del(`formRecordings-${id}`); 
+    await window.idbKeyval.set('formsMetadata', allFormsMetadata);
+    await window.idbKeyval.del(`formRecordings-${id}`); 
     
     alert('Form has been deleted successfully.');
     await loadInitialData();
@@ -114,7 +120,7 @@ async function renderFormsList(searchQuery = '', status = 'all', date = '', cate
             statusText = 'Completed';
         }
         
-        const formRecordings = (await idbKeyval.get(`formRecordings-${form.id}`)) || [];
+        const formRecordings = (await window.idbKeyval.get(`formRecordings-${form.id}`)) || [];
         const numNotes = formRecordings.length;
         
         const card = document.createElement('div');
@@ -263,9 +269,9 @@ function updatePlayerUI(state) {
 }
 
 async function createNewFormMetadata() {
-    let lastFormSequenceNumber = (await idbKeyval.get('lastFormSequenceNumber')) || 0;
+    let lastFormSequenceNumber = (await window.idbKeyval.get('lastFormSequenceNumber')) || 0;
     const newFormNumber = ++lastFormSequenceNumber;
-    await idbKeyval.set('lastFormSequenceNumber', newFormNumber);
+    await window.idbKeyval.set('lastFormSequenceNumber', newFormNumber);
     
     currentFormId = generateUUID();
     const now = new Date();
@@ -284,7 +290,7 @@ async function createNewFormMetadata() {
     };
     
     allFormsMetadata.unshift(formData);
-    await idbKeyval.set('formsMetadata', allFormsMetadata);
+    await window.idbKeyval.set('formsMetadata', allFormsMetadata);
     
     formIdentifierNewForm.textContent = `Form #${newFormNumber}`;
     formIdentifierNewForm.style.display = 'block';
@@ -376,7 +382,7 @@ async function saveDictatedSegment(text) {
         await createNewFormMetadata();
     }
     
-    const formRecordings = (await idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
+    const formRecordings = (await window.idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
     
     const segmentMetaData = {
         id: generateUUID(),
@@ -387,7 +393,7 @@ async function saveDictatedSegment(text) {
     };
     
     formRecordings.unshift(segmentMetaData);
-    await idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
+    await window.idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
 }
 
 function copyToClipboardNew() {
@@ -404,15 +410,14 @@ function copyToClipboardNew() {
 async function deleteFormAndRedirect() {
     if (currentFormId) {
         if (confirm('Are you sure you want to discard this form?')) {
-            let allForms = (await idbKeyval.get('formsMetadata')) || [];
+            let allForms = (await window.idbKeyval.get('formsMetadata')) || [];
             allForms = allForms.filter(f => f.id !== currentFormId);
-            await idbKeyval.set('formsMetadata', allForms);
+            await window.idbKeyval.set('formsMetadata', allForms);
 
-            await idbKeyval.del(`formRecordings-${currentFormId}`);
+            await window.idbKeyval.del(`formRecordings-${currentFormId}`);
             
             resetNewFormState();
             navigateTo('my-forms-page', 'My Forms', true);
-            await loadInitialData();
         }
     }
 }
@@ -433,7 +438,6 @@ function resetNewFormState() {
     initialNotesNew.value = '';
 
     updatePlayerUI('stopped');
-    resetChronometer('chronometerNew');
 }
 
 
@@ -465,9 +469,8 @@ let playbackInterval;
 let playbackTextIndex = 0;
 const typingSpeed = 20;
 
-
 async function loadFormReportContent(formId) {
-    let allForms = (await idbKeyval.get('formsMetadata')) || [];
+    let allForms = (await window.idbKeyval.get('formsMetadata')) || [];
     let currentFormMetadata = allForms.find(f => f.id === formId);
 
     if (!currentFormMetadata) {
@@ -487,7 +490,7 @@ async function loadFormReportContent(formId) {
     formStatusReport.value = currentFormMetadata.status || 'not-started';
     initialNotesReport.value = currentFormMetadata.notes || '';
 
-    const formRecordings = (await idb-keyval.get(`formRecordings-${formId}`)) || [];
+    const formRecordings = (await window.idbKeyval.get(`formRecordings-${formId}`)) || [];
     currentFormRecordings = formRecordings.map(s => s.text).join(' ');
     transcriptionContentReport.textContent = currentFormRecordings.trim() || 'This form contains no transcribed text yet.';
     
@@ -556,12 +559,12 @@ async function saveReportChanges() {
         allFormsMetadata[formIndex].status = formStatusReport.value;
         allFormsMetadata[formIndex].notes = initialNotesReport.value;
         allFormsMetadata[formIndex].lastModified = new Date().toISOString();
-        await idb-keyval.set('formsMetadata', allFormsMetadata);
+        await window.idbKeyval.set('formsMetadata', allFormsMetadata);
 
         if (currentFormRecordings.length > 0) {
-            let formRecordings = (await idb-keyval.get(`formRecordings-${currentFormReportId}`)) || [];
+            let formRecordings = (await window.idbKeyval.get(`formRecordings-${currentFormReportId}`)) || [];
             formRecordings[0].text = transcriptionContentReport.textContent;
-            await idb-keyval.set(`formRecordings-${currentFormReportId}`, formRecordings);
+            await window.idbKeyval.set(`formRecordings-${currentFormReportId}`, formRecordings);
         }
         alert('Changes saved successfully!');
     }
@@ -571,11 +574,10 @@ async function deleteReportForm() {
     if (!currentFormReportId) return;
     if (confirm('Are you sure you want to delete this form? This action is irreversible.')) {
         allFormsMetadata = allFormsMetadata.filter(f => f.id !== currentFormReportId);
-        await idb-keyval.set('formsMetadata', allFormsMetadata);
-        await idb-keyval.del(`formRecordings-${currentFormReportId}`);
+        await window.idbKeyval.set('formsMetadata', allFormsMetadata);
+        await window.idbKeyval.del(`formRecordings-${currentFormReportId}`);
         alert('Form has been deleted successfully.');
         navigateTo('my-forms-page', 'My Forms', true);
-        await loadInitialData();
     }
 }
 
@@ -583,15 +585,12 @@ async function deleteReportForm() {
 // --- Event Listeners for Navigation and My Forms Page ---
 myFormsNav.addEventListener('click', async (e) => {
     e.preventDefault();
-    await loadInitialData();
     navigateTo('my-forms-page', 'My Forms', true);
-    renderFormsList();
 });
 
 newFormNav.addEventListener('click', (e) => {
     e.preventDefault();
     navigateTo('new-form-page', 'New Form');
-    resetNewFormState();
 });
 
 searchFormsInput.addEventListener('input', debounce(() => {
@@ -661,7 +660,7 @@ saveCharacteristicsButtonNew.addEventListener('click', async () => {
         allFormsMetadata[formToUpdateIndex].status = formStatusNew.value;
         allFormsMetadata[formToUpdateIndex].notes = initialNotesNew.value;
         allFormsMetadata[formToUpdateIndex].lastModified = new Date().toISOString();
-        await idb-keyval.set('formsMetadata', allFormsMetadata);
+        await window.idbKeyval.set('formsMetadata', allFormsMetadata);
         alert('Characteristics saved!');
     }
     
@@ -714,16 +713,16 @@ detailsAccordionHeaderReport.addEventListener('click', () => {
 
 
 // --- Initial Data Loading and Page Setup ---
-async function loadInitialData() {
-    allFormsMetadata = (await idb-keyval.get('formsMetadata')) || [];
-    await populateCategoryFilter();
-    await renderTodayTasks();
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadInitialData();
+    await window.idbKeyval.get('formsMetadata'); // This line is not needed, it will be handled by loadInitialData
     navigateTo('my-forms-page', 'My Forms', true);
-    renderFormsList();
 });
+
+// Helper function to load initial data and render forms
+async function loadInitialData() {
+    allFormsMetadata = (await window.idbKeyval.get('formsMetadata')) || [];
+    populateCategoryFilter();
+    renderTodayTasks();
+}
 
 window.navigateToFormReport = navigateToFormReport;
