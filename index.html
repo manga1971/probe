@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forma - New Form</title>
-    <meta name="description" content="Create professional forms quickly via voice dictation. An offline, secure productivity app.">
+    <title>Forma</title>
+    <meta name="description" content="Manage and create forms quickly via voice dictation.">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
-    <script src="common.js"></script>
-</head>
+    </head>
 <body>
 
     <div class="app-container">
         <header class="app-header-compact">
-            <h1 class="app-title">New Form</h1>
+            <h1 id="appTitle" class="app-title"></h1>
             <div class="header-actions">
+                <input type="search" id="headerSearchInput" class="header-search-input" placeholder="Search forms..." style="display: none;">
                 <button id="accountSettingsButton" class="icon-button" aria-label="Account Settings">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.33 0-4 .67-4 2v3h8v-3c0-1.33-2.67-2-4-2z"/></svg>
                 </button>
@@ -22,90 +22,173 @@
         </header>
 
         <main class="main-content">
-            <div id="dictationContainer" class="dictation-container glass-container">
-                <div class="container-header">
-                    <div id="formIdentifier" class="form-id-badge">Form #</div>
-                    <button class="accordion-header" id="detailsAccordionHeader">
-                        Details
-                        <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
-                    </button>
-                </div>
-
-                <div class="accordion-content">
-                    <div class="metadata-fields">
-                        <label for="formTitle">Title:</label>
-                        <input type="text" id="formTitle" placeholder="Form title" autocomplete="off">
-                        
-                        <label for="formClient">Client:</label>
-                        <input type="text" id="formClient" placeholder="Client name" autocomplete="off">
-                        
-                        <label for="formCategory">Category:</label>
-                        <input type="text" id="formCategory" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
-                        
-                        <label for="formStatus">Status:</label>
-                        <select id="formStatus">
+            
+            <div id="my-forms-page" class="page-section active">
+                <div class="glass-container filter-section">
+                    <div class="filter-group">
+                        <label for="filterStatus">Status:</label>
+                        <select id="filterStatus">
+                            <option value="all">All</option>
                             <option value="not-started">New</option>
                             <option value="in-progress">In Progress</option>
                             <option value="completed">Completed</option>
                         </select>
-                        
-                        <label for="initialNotes">Notes:</label>
-                        <textarea id="initialNotes" placeholder="Add initial notes here..."></textarea>
-                        
-                        <button id="saveCharacteristicsButton" class="save-button">Save Characteristics</button>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterDate">Date:</label>
+                        <input type="date" id="filterDate">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterCategory">Category:</label>
+                        <select id="filterCategory">
+                            <option value="all">All</option>
+                        </select>
                     </div>
                 </div>
 
-                <p id="transcriptionContent" class="text-display custom-scrollbar">Press "Dictate" to start...</p>
-                
-                <div class="player-controls-compact">
-                    <div class="player-zone-1">
-                        <button id="dictationButton" class="control-button">
-                            Dictate
-                        </button>
-                        <button id="pausePlayButton" class="control-button" style="display: none;">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                        </button>
+                <div class="glass-container">
+                    <h2 class="section-title">Today's Tasks</h2>
+                    <div id="todayTasksList" class="list-container custom-scrollbar">
+                        <p id="noTodayTasksMessage" class="empty-state-message">No tasks scheduled for today.</p>
                     </div>
-                    
-                    <div class="player-zone-2">
-                        <div id="pulsatingLed" class="pulsating-led"></div>
-                        <span id="chronometer" class="chronometer">0:00</span>
-                    </div>
+                </div>
 
-                    <div class="player-zone-3">
-                        <button id="copyButton" class="control-button disabled">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                        </button>
-                        <button id="editButton" class="control-button disabled">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                        </button>
-                        <button id="deleteButton" class="control-button button-danger disabled">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                        </button>
+                <div class="glass-container">
+                    <h2 class="section-title">All Forms</h2>
+                    <div id="formsList" class="list-container custom-scrollbar">
+                        <p class="empty-state-message" id="noFormsMessage">No forms created yet.</p>
                     </div>
                 </div>
             </div>
+
+            <div id="new-form-page" class="page-section" style="display: none;">
+                <div id="dictationContainer" class="dictation-container glass-container">
+                    <div class="container-header">
+                        <div id="formIdentifierNewForm" class="form-id-badge" style="display: none;">Form #</div>
+                        <button class="accordion-header" id="detailsAccordionHeaderNew">
+                            Details
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="metadata-fields">
+                            <label for="formTitleNew">Title:</label>
+                            <input type="text" id="formTitleNew" placeholder="Form title" autocomplete="off">
+                            <label for="formClientNew">Client:</label>
+                            <input type="text" id="formClientNew" placeholder="Client name" autocomplete="off">
+                            <label for="formCategoryNew">Category:</label>
+                            <input type="text" id="formCategoryNew" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
+                            <label for="formStatusNew">Status:</label>
+                            <select id="formStatusNew">
+                                <option value="not-started">New</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <label for="initialNotesNew">Notes:</label>
+                            <textarea id="initialNotesNew" placeholder="Add initial notes here..."></textarea>
+                            <button id="saveCharacteristicsButtonNew" class="save-button">Save Characteristics</button>
+                        </div>
+                    </div>
+                    <p id="transcriptionContentNew" class="text-display custom-scrollbar">Press "Dictate" to start...</p>
+                    <div class="player-controls-compact">
+                        <div class="player-zone-1">
+                            <button id="dictationButton" class="control-button">Dictate</button>
+                            <button id="pausePlayButtonNew" class="control-button" style="display: none;">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                        </div>
+                        <div class="player-zone-2">
+                            <div id="pulsatingLedNew" class="pulsating-led"></div>
+                            <span id="chronometerNew" class="chronometer">0:00</span>
+                        </div>
+                        <div class="player-zone-3">
+                            <button id="copyButtonNew" class="control-button disabled">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                            <button id="editButtonNew" class="control-button disabled">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+                            <button id="deleteButtonNew" class="control-button button-danger disabled">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="form-report-page" class="page-section" style="display: none;">
+                <div id="dictationContainerReport" class="dictation-container glass-container">
+                    <div class="container-header">
+                        <div id="formIdentifierReport" class="form-id-badge" style="display: none;">Form #</div>
+                        <button class="accordion-header" id="detailsAccordionHeaderReport">
+                            Details
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="metadata-fields">
+                            <label for="formTitleReport">Title:</label>
+                            <input type="text" id="formTitleReport" placeholder="Form title" autocomplete="off">
+                            <label for="formClientReport">Client:</label>
+                            <input type="text" id="formClientReport" placeholder="Client name" autocomplete="off">
+                            <label for="formCategoryReport">Category:</label>
+                            <input type="text" id="formCategoryReport" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
+                            <label for="formStatusReport">Status:</label>
+                            <select id="formStatusReport">
+                                <option value="not-started">New</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <label for="initialNotesReport">Notes:</label>
+                            <textarea id="initialNotesReport" placeholder="Add initial notes here..."></textarea>
+                            <button id="saveCharacteristicsButtonReport" class="save-button">Save Characteristics</button>
+                        </div>
+                    </div>
+                    <div id="transcriptionContentReport" class="text-display custom-scrollbar" contenteditable="true">
+                        This is where the form content will be displayed and can be edited.
+                    </div>
+                    <div class="player-controls-compact">
+                        <div class="player-zone-1">
+                            <button id="pausePlayButtonReport" class="control-button">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                        </div>
+                        <div class="player-zone-2">
+                            <div id="pulsatingLedReport" class="pulsating-led"></div>
+                            <span id="chronometerReport" class="chronometer">0:00</span>
+                        </div>
+                        <div class="player-zone-3">
+                            <button id="copyButtonReport" class="control-button">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                            <button id="saveButtonReport" class="control-button">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10V5.5L18.5 9H15z"/></svg>
+                            </button>
+                            <button id="deleteFormButtonReport" class="control-button button-danger">
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
         
         <nav class="main-navbar glass-container">
             <div class="navbar-group">
-                <a href="home.html" class="navbar-button">
-                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                    <span>Home</span>
-                </a>
-                <a href="index.html" class="navbar-button active">
-                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                    <span>New Form</span>
-                </a>
-                <a href="my-forms.html" class="navbar-button">
+                <a href="#" id="my-forms-nav" class="navbar-button active">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.89 2 1.99 2H20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
                     <span>My Forms</span>
+                </a>
+                <a href="#" id="new-form-nav" class="navbar-button">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <span>New Form</span>
                 </a>
             </div>
         </nav>
     </div>
-
-    <script src="main.js"></script>
-</body>
+    
+    <script src="common.js"></script>
+    <script type="module" src="app.js"></script>
+    </body>
 </html>
