@@ -57,6 +57,35 @@ body {
     box-sizing: border-box;
 }
 
+/* style.css - Adaugă această secțiune */
+
+/* * Stiluri pentru a gestiona secțiunile paginii în modul SPA
+ * Pagina activă are display: block, celelalte display: none
+ */
+.page-section {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+}
+
+.page-section.active {
+    display: flex;
+}
+
+.accordion-content.expanded {
+    max-height: 500px;
+    overflow: hidden; /* Asigură că textul nu depășește containerul */
+    transition: max-height 0.3s ease-in-out;
+}
+
+/* Stiluri pentru a corecta layout-ul în contextul SPA */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+}
+
 .app-header {
     display: flex;
     justify-content: space-between;
@@ -126,35 +155,6 @@ body {
 }
 .icon-button:hover { background-color: rgba(255, 255, 255, 0.1); }
 .icon-button svg { width: 28px; height: 28px; }
-
-/* style.css - Adaugă această secțiune */
-
-/* * Stiluri pentru a gestiona secțiunile paginii în modul SPA
- * Pagina activă are display: block, celelalte display: none
- */
-.page-section {
-    display: none;
-    flex-direction: column;
-    flex: 1;
-}
-
-.page-section.active {
-    display: flex;
-}
-
-.accordion-content.expanded {
-    max-height: 500px;
-    overflow: hidden; /* Asigură că textul nu depășește containerul */
-    transition: max-height 0.3s ease-in-out;
-}
-
-/* Stiluri pentru a corecta layout-ul în contextul SPA */
-.main-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    width: 100%;
-}
 
 /* Glassmorphism Effect */
 .glass-container {
