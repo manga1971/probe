@@ -60,11 +60,17 @@ export function resetChronometer(elementId) {
 export function setupAccordion(headerId) {
     const accordionHeader = document.getElementById(headerId);
     if (accordionHeader) {
+        const accordionContent = accordionHeader.nextElementSibling;
+        const accordionIcon = accordionHeader.querySelector('.accordion-icon');
+
         accordionHeader.addEventListener('click', () => {
-            const accordionIcon = accordionHeader.querySelector('.accordion-icon');
-            const accordionContent = accordionHeader.nextElementSibling;
             accordionContent.classList.toggle('expanded');
             accordionIcon.classList.toggle('expanded');
+            if (accordionContent.classList.contains('expanded')) {
+                accordionContent.style.maxHeight = accordionContent.scrollHeight + "px";
+            } else {
+                accordionContent.style.maxHeight = null;
+            }
         });
     }
 }
@@ -73,8 +79,13 @@ export function setupAccordion(headerId) {
 export function showPage(pageId) {
     document.querySelectorAll('.page-section').forEach(page => {
         page.classList.remove('active');
+        page.style.display = 'none'; // Ensure it's hidden
     });
-    document.getElementById(pageId).classList.add('active');
+    const page = document.getElementById(pageId);
+    if (page) {
+        page.classList.add('active');
+        page.style.display = 'flex'; // Use flex for layout
+    }
 }
 
 // Update navbar active state
@@ -82,5 +93,8 @@ export function updateNavState(navId) {
     document.querySelectorAll('.navbar-button').forEach(button => {
         button.classList.remove('active');
     });
-    document.getElementById(navId).classList.add('active');
+    const navButton = document.getElementById(navId);
+    if (navButton) {
+        navButton.classList.add('active');
+    }
 }
