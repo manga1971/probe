@@ -26,7 +26,7 @@ const headerSearchInput = document.getElementById('headerSearchInput');
 let allFormsMetadata = [];
 
 // --- SPA Navigation Logic ---
-function navigateTo(pageId, title, showSearch = false) {
+function navigateTo(pageId, title, showSearch = false, formId = null) {
     showPage(pageId);
     appTitle.textContent = title;
     headerSearchInput.style.display = showSearch ? 'flex' : 'none';
@@ -38,12 +38,23 @@ function navigateTo(pageId, title, showSearch = false) {
         renderFormsList();
     } else if (pageId === 'new-form-page') {
         resetNewFormState();
+        initializeNewForm();
+    } else if (pageId === 'form-report-page' && formId) {
+        loadFormReportContent(formId);
     }
 }
 
+function initializeNewForm() {
+    // We can add logic to populate dynamic metadata here if needed
+    // For now, it just sets up the accordion
+    setupAccordion('detailsAccordionHeaderNew');
+    updatePlayerUI('stopped');
+}
+
 function navigateToFormReport(formId) {
-    navigateTo('form-report-page', 'Form Report');
-    loadFormReportContent(formId);
+    const formToEdit = allFormsMetadata.find(f => f.id === formId);
+    const title = formToEdit ? (formToEdit.title || `Form #${formToEdit.formNumber}`) : 'Form Report';
+    navigateTo('form-report-page', title, false, formId);
 }
 
 // --- My Forms Page Logic ---
@@ -469,9 +480,11 @@ async function loadFormReportContent(formId) {
         transcriptionContentReport.textContent = '';
         return;
     }
+    
+    setupAccordion('detailsAccordionHeaderReport');
 
     currentFormReportId = formId;
-    appTitle.textContent = currentFormMetadata.title || 'Form Report';
+    appTitle.textContent = currentFormMetadata.title || `Form #${currentFormMetadata.formNumber || 'N/A'}`;
     formIdentifierReport.textContent = `Form #${currentFormMetadata.formNumber || 'N/A'}`;
     formIdentifierReport.style.display = 'block';
 
