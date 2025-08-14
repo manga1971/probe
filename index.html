@@ -4,19 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forma</title>
-    
     <meta name="description" content="Manage and create forms quickly via voice dictation.">
-    <meta name="robots" content="index,follow">
-    <meta name="theme-color" content="#1a202c">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Forma — smart voice-to-notes">
-    <meta property="og:description" content="Dictate, transcribe, and organize forms offline-first.">
-    <meta property="og:image" content="/og-image.png">
-    <link rel="manifest" href="/manifest.webmanifest">
-
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js" defer></script>
-    </head>
+    <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+</head>
 <body>
 
     <div class="app-container">
@@ -32,7 +23,7 @@
 
         <main class="main-content">
             
-            <div id="my-forms-page" class="page-section active">
+            <div id="my-forms-page" class="page-section">
                 <div class="glass-container filter-section">
                     <div class="filter-group">
                         <label for="filterStatus">Status:</label>
@@ -93,10 +84,10 @@
                                 <option value="in-progress">In Progress</option>
                                 <option value="completed">Completed</option>
                             </select>
-                            <label for="plannedDateNew">Planned date:</label>
-                            <input type="date" id="plannedDateNew">
                             <label for="initialNotesNew">Notes:</label>
                             <textarea id="initialNotesNew" placeholder="Add initial notes here..."></textarea>
+                            <label for="plannedDateNew">Planned date:</label>
+                            <input type="date" id="plannedDateNew">
                             <button id="saveCharacteristicsButtonNew" class="save-button">Save Characteristics</button>
                         </div>
                     </div>
@@ -150,10 +141,10 @@
                                 <option value="in-progress">In Progress</option>
                                 <option value="completed">Completed</option>
                             </select>
-                            <label for="plannedDateReport">Planned date:</label>
-                            <input type="date" id="plannedDateReport">
                             <label for="initialNotesReport">Notes:</label>
                             <textarea id="initialNotesReport" placeholder="Add initial notes here..."></textarea>
+                            <label for="plannedDateReport">Planned date:</label>
+                            <input type="date" id="plannedDateReport">
                             <button id="saveCharacteristicsButtonReport" class="save-button">Save Characteristics</button>
                         </div>
                     </div>
@@ -189,7 +180,7 @@
         
         <nav class="main-navbar glass-container">
             <div class="navbar-group">
-                <a href="#" id="my-forms-nav" class="navbar-button active">
+                <a href="#" id="my-forms-nav" class="navbar-button">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.89 2 1.99 2H20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
                     <span>My Forms</span>
                 </a>
