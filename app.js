@@ -1,5 +1,5 @@
 // app.js
-import { generateUUID, debounce, playIconSVG, pauseIconSVG, startChronometer, resetChronometer, pauseChronometer, setupAccordion, showPage, updateNavState, showToast } from './common.js';
+import { generateUUID, debounce, playIconSVG, pauseIconSVG, startChronometer, stopChronometer, resetChronometer, setupAccordion, showPage, updateNavState } from './common.js';
 
 // DOM Elements - Navigation
 const myFormsNav = document.getElementById('my-forms-nav');
@@ -26,27 +26,36 @@ const headerSearchInput = document.getElementById('headerSearchInput');
 let allFormsMetadata = [];
 
 // --- SPA Navigation Logic ---
-function navigateTo(pageId, title, showSearch = false) {
+function navigateTo(pageId, title, showSearch = false, formId = null) {
     showPage(pageId);
     appTitle.textContent = title;
     headerSearchInput.style.display = showSearch ? 'flex' : 'none';
 
-    // Update active state of navbar buttons
-    document.querySelectorAll('.navbar-button').forEach(button => {
-        button.classList.remove('active');
-    });
-
     if (pageId === 'my-forms-page') {
         updateNavState('my-forms-nav');
         resetNewFormState();
+        loadInitialData();
+        renderFormsList();
     } else if (pageId === 'new-form-page') {
         updateNavState('new-form-nav');
+        resetNewFormState();
+    } else if (pageId === 'form-report-page' && formId) {
+        // We do not change nav state for the report page
+        // But we hide search
+        headerSearchInput.style.display = 'none';
+        loadFormReportContent(formId);
     }
 }
 
+function initializeNewForm() {
+    setupAccordion('detailsAccordionHeaderNew');
+    updatePlayerUI('stopped');
+}
+
 function navigateToFormReport(formId) {
-    navigateTo('form-report-page', 'Form Report');
-    loadFormReportContent(formId);
+    const formToEdit = allFormsMetadata.find(f => f.id === formId);
+    const title = formToEdit ? (formToEdit.title || `Form #${formToEdit.formNumber}`) : 'Form Report';
+    navigateTo('form-report-page', title, false, formId);
 }
 
 // --- My Forms Page Logic ---
@@ -57,7 +66,7 @@ window.deleteForm = async (id) => {
     await idbKeyval.set('formsMetadata', allFormsMetadata);
     await idbKeyval.del(`formRecordings-${id}`); 
     
-    showToast('Form has been deleted successfully.');
+    alert('Form has been deleted successfully.');
     await loadInitialData();
     renderFormsList(); 
     renderTodayTasks(); 
@@ -197,7 +206,6 @@ const formTitleNew = document.getElementById('formTitleNew');
 const formClientNew = document.getElementById('formClientNew');
 const formCategoryNew = document.getElementById('formCategoryNew');
 const formStatusNew = document.getElementById('formStatusNew');
-const plannedDateNew = document.getElementById('plannedDateNew');
 const initialNotesNew = document.getElementById('initialNotesNew');
 const saveCharacteristicsButtonNew = document.getElementById('saveCharacteristicsButtonNew');
 const formIdentifierNewForm = document.getElementById('formIdentifierNewForm');
@@ -205,6 +213,7 @@ const transcriptionContentNew = document.getElementById('transcriptionContentNew
 const detailsAccordionHeaderNew = document.getElementById('detailsAccordionHeaderNew');
 const detailsAccordionContentNew = detailsAccordionHeaderNew.nextElementSibling;
 const accordionIconNew = detailsAccordionHeaderNew.querySelector('.accordion-icon');
+const plannedDateNew = document.getElementById('plannedDateNew');
 
 const dictationButton = document.getElementById('dictationButton');
 const pausePlayButtonNew = document.getElementById('pausePlayButtonNew');
@@ -278,8 +287,8 @@ async function createNewFormMetadata() {
         client: formClientNew.value,
         category: formCategoryNew.value,
         status: formStatusNew.value,
-        plannedDate: plannedDateNew && plannedDateNew.value ? new Date(plannedDateNew.value).toISOString() : null,
         notes: initialNotesNew.value,
+        plannedDate: plannedDateNew.value, // Added plannedDate here
         createdAt: now.toISOString(),
         lastModified: now.toISOString(),
         segments: [],
@@ -294,7 +303,7 @@ async function createNewFormMetadata() {
 
 function startDictation() {
     if (!('webkitSpeechRecognition' in window)) {
-        showToast("Web Speech API is not supported in this browser. Please use Chrome or a similar browser.");
+        alert("Web Speech API is not supported in this browser. Please use Chrome or a similar browser.");
         return;
     }
     
@@ -395,10 +404,10 @@ async function saveDictatedSegment(text) {
 function copyToClipboardNew() {
     if (transcriptionContentNew.textContent.trim().length > 0) {
         navigator.clipboard.writeText(transcriptionContentNew.textContent).then(() => {
-            showToast('Text copied to clipboard!');
+            alert('Text copied to clipboard!');
         }).catch(err => {
             console.error('Failed to copy text: ', err);
-            showToast('Failed to copy text.');
+            alert('Failed to copy text.');
         });
     }
 }
@@ -414,7 +423,6 @@ async function deleteFormAndRedirect() {
             
             resetNewFormState();
             navigateTo('my-forms-page', 'My Forms', true);
-            await loadInitialData();
         }
     }
 }
@@ -433,9 +441,9 @@ function resetNewFormState() {
     formCategoryNew.value = '';
     formStatusNew.value = 'not-started';
     initialNotesNew.value = '';
+    plannedDateNew.value = ''; // Added to reset planned date
 
     updatePlayerUI('stopped');
-    resetChronometer('chronometerNew');
 }
 
 
@@ -445,12 +453,12 @@ const formTitleReport = document.getElementById('formTitleReport');
 const formClientReport = document.getElementById('formClientReport');
 const formCategoryReport = document.getElementById('formCategoryReport');
 const formStatusReport = document.getElementById('formStatusReport');
-const plannedDateReport = document.getElementById('plannedDateReport');
 const initialNotesReport = document.getElementById('initialNotesReport');
 const transcriptionContentReport = document.getElementById('transcriptionContentReport');
 const detailsAccordionHeaderReport = document.getElementById('detailsAccordionHeaderReport');
 const detailsAccordionContentReport = detailsAccordionHeaderReport.nextElementSibling;
 const accordionIconReport = detailsAccordionHeaderReport.querySelector('.accordion-icon');
+const plannedDateReport = document.getElementById('plannedDateReport');
 
 const pausePlayButtonReport = document.getElementById('pausePlayButtonReport');
 const copyButtonReport = document.getElementById('copyButtonReport');
@@ -468,7 +476,6 @@ let playbackInterval;
 let playbackTextIndex = 0;
 const typingSpeed = 20;
 
-
 async function loadFormReportContent(formId) {
     let allForms = (await idbKeyval.get('formsMetadata')) || [];
     let currentFormMetadata = allForms.find(f => f.id === formId);
@@ -478,9 +485,11 @@ async function loadFormReportContent(formId) {
         transcriptionContentReport.textContent = '';
         return;
     }
+    
+    setupAccordion('detailsAccordionHeaderReport');
 
     currentFormReportId = formId;
-    appTitle.textContent = currentFormMetadata.title || 'Form Report';
+    appTitle.textContent = currentFormMetadata.title || `Form #${currentFormMetadata.formNumber || 'N/A'}`;
     formIdentifierReport.textContent = `Form #${currentFormMetadata.formNumber || 'N/A'}`;
     formIdentifierReport.style.display = 'block';
 
@@ -489,7 +498,7 @@ async function loadFormReportContent(formId) {
     formCategoryReport.value = currentFormMetadata.category || '';
     formStatusReport.value = currentFormMetadata.status || 'not-started';
     initialNotesReport.value = currentFormMetadata.notes || '';
-    if (plannedDateReport) { plannedDateReport.value = currentFormMetadata.plannedDate ? new Date(currentFormMetadata.plannedDate).toISOString().slice(0,10) : ''; }
+    plannedDateReport.value = currentFormMetadata.plannedDate || ''; // Added to load planned date
 
     const formRecordings = (await idbKeyval.get(`formRecordings-${formId}`)) || [];
     currentFormRecordings = formRecordings.map(s => s.text).join(' ');
@@ -558,8 +567,8 @@ async function saveReportChanges() {
         allFormsMetadata[formIndex].client = formClientReport.value;
         allFormsMetadata[formIndex].category = formCategoryReport.value;
         allFormsMetadata[formIndex].status = formStatusReport.value;
-        allFormsMetadata[formIndex].plannedDate = plannedDateReport && plannedDateReport.value ? new Date(plannedDateReport.value).toISOString() : null;
         allFormsMetadata[formIndex].notes = initialNotesReport.value;
+        allFormsMetadata[formIndex].plannedDate = plannedDateReport.value; // Added to save planned date
         allFormsMetadata[formIndex].lastModified = new Date().toISOString();
         await idbKeyval.set('formsMetadata', allFormsMetadata);
 
@@ -568,7 +577,7 @@ async function saveReportChanges() {
             formRecordings[0].text = transcriptionContentReport.textContent;
             await idbKeyval.set(`formRecordings-${currentFormReportId}`, formRecordings);
         }
-        showToast('Changes saved successfully!');
+        alert('Changes saved successfully!');
     }
 }
 
@@ -578,9 +587,8 @@ async function deleteReportForm() {
         allFormsMetadata = allFormsMetadata.filter(f => f.id !== currentFormReportId);
         await idbKeyval.set('formsMetadata', allFormsMetadata);
         await idbKeyval.del(`formRecordings-${currentFormReportId}`);
-        showToast('Form has been deleted successfully.');
+        alert('Form has been deleted successfully.');
         navigateTo('my-forms-page', 'My Forms', true);
-        await loadInitialData();
     }
 }
 
@@ -588,15 +596,12 @@ async function deleteReportForm() {
 // --- Event Listeners for Navigation and My Forms Page ---
 myFormsNav.addEventListener('click', async (e) => {
     e.preventDefault();
-    await loadInitialData();
     navigateTo('my-forms-page', 'My Forms', true);
-    renderFormsList();
 });
 
 newFormNav.addEventListener('click', (e) => {
     e.preventDefault();
     navigateTo('new-form-page', 'New Form');
-    resetNewFormState();
 });
 
 searchFormsInput.addEventListener('input', debounce(() => {
@@ -665,9 +670,10 @@ saveCharacteristicsButtonNew.addEventListener('click', async () => {
         allFormsMetadata[formToUpdateIndex].category = formCategoryNew.value;
         allFormsMetadata[formToUpdateIndex].status = formStatusNew.value;
         allFormsMetadata[formToUpdateIndex].notes = initialNotesNew.value;
+        allFormsMetadata[formToUpdateIndex].plannedDate = plannedDateNew.value;
         allFormsMetadata[formToUpdateIndex].lastModified = new Date().toISOString();
         await idbKeyval.set('formsMetadata', allFormsMetadata);
-        showToast('Characteristics saved!');
+        alert('Characteristics saved!');
     }
     
     if (detailsAccordionContentNew.classList.contains('expanded')) {
@@ -689,10 +695,10 @@ copyButtonReport.addEventListener('click', async () => {
     if (transcriptionContentReport.textContent) {
         try {
             await navigator.clipboard.writeText(transcriptionContentReport.textContent);
-            showToast('Text copied to clipboard!');
+            alert('Text copied to clipboard!');
         } catch (err) {
             console.error('Failed to copy text: ', err);
-            showToast('Failed to copy text.');
+            alert('Failed to copy text.');
         }
     }
 });
@@ -721,14 +727,13 @@ detailsAccordionHeaderReport.addEventListener('click', () => {
 // --- Initial Data Loading and Page Setup ---
 async function loadInitialData() {
     allFormsMetadata = (await idbKeyval.get('formsMetadata')) || [];
-    await populateCategoryFilter();
-    await renderTodayTasks();
+    populateCategoryFilter();
+    renderTodayTasks();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadInitialData();
     navigateTo('my-forms-page', 'My Forms', true);
-    renderFormsList();
 });
 
 window.navigateToFormReport = navigateToFormReport;
