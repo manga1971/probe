@@ -97,7 +97,6 @@ function initializeEditPage(formId) {
 
 async function loadTranscriptionContent(formId) {
     const formRecordings = (await idbKeyval.get(`formRecordings-${formId}`)) || [];
-    currentFormRecordings = formRecordings.map(s => s.text).join(' ');
     transcriptionContent.innerHTML = formatTranscriptionWithNotes(formRecordings);
 }
 
