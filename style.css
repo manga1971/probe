@@ -22,6 +22,7 @@
     --color-accent-red: #ef4444;
     --color-accent-red-hover: #dc2626;
     --color-accent-purple: #a78bfa;
+    --color-accent-yellow: #f59e0b;
 
     --wave-color: #ef4444;
 
@@ -57,25 +58,7 @@ body {
     box-sizing: border-box;
 }
 
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto 1.5rem;
-    padding: 1rem;
-    box-sizing: border-box;
-    position: sticky;
-    top: 1rem;
-    z-index: 20;
-    background: var(--color-glass-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--color-glass-border);
-    border-radius: 1rem;
-    transition: all 0.3s ease;
-}
+/* Updated app-header-compact for glassmorphism */
 .app-header-compact {
     display: flex;
     justify-content: space-between;
@@ -88,10 +71,11 @@ body {
     position: sticky;
     top: 1rem;
     z-index: 20;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border: none;
+    background: rgba(255, 255, 255, 0.08); /* Semi-transparent background */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--color-glass-border);
+    border-radius: 1rem;
 }
 .app-title {
     font-size: 1.5rem;
@@ -381,7 +365,7 @@ body {
     text-align: center;
 }
 
-/* Navbar */
+/* Navbar (Not used anymore, but kept for reference) */
 .main-navbar {
     position: fixed;
     bottom: 1.5rem;
@@ -521,4 +505,41 @@ body {
 .card-actions {
     display: flex;
     gap: 0.5rem;
+}
+.favorite-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease-in-out;
+}
+.favorite-toggle.active {
+    color: var(--color-accent-yellow);
+}
+.floating-dictate-button {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--color-accent-green);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: transform 0.2s ease-in-out, background-color 0.2s;
+}
+.floating-dictate-button:hover {
+    transform: translateX(-50%) scale(1.1);
+}
+.floating-dictate-button svg {
+    width: 30px;
+    height: 30px;
 }
