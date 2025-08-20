@@ -287,15 +287,91 @@ async function deleteForm() {
 // --- Rendering Home Page ---
 async function renderFormsList(searchQuery = '', status = 'all', date = '', category = 'all') {
     let filteredForms = allFormsMetadata;
-    // (Logic for filtering remains the same)
-    formsListContainer.innerHTML = '';
-    // ... rendering logic for form cards
+
+    if (searchQuery) {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        filteredForms = filteredForms.filter(form => 
+            (form.title && form.title.toLowerCase().includes(lowerCaseQuery)) ||
+            (form.client && form.client.toLowerCase().includes(lowerCaseQuery)) ||
+            (form.category && form.category.toLowerCase().includes(lowerCaseQuery)) ||
+            (form.formNumber && String(form.formNumber).includes(lowerCaseQuery))
+        );
+    }
+    
+    if (status !== 'all') {
+        filteredForms = filteredForms.filter(form => form.status === status);
+    }
+    
+    if (date) {
+        const filterDateFormatted = new Date(date).toISOString().split('T')[0];
+        filteredForms = filteredForms.filter(form => {
+            const formDateFormatted = new Date(form.createdAt).toISOString().split('T')[0];
+            return formDateFormatted === filterDateFormatted;
+        });
+    }
+    
+    if (category !== 'all') {
+        filteredForms = filteredForms.filter(form => form.category === category);
+    }
+
+    formsListContainer.innerHTML = ''; 
+
+    if (filteredForms.length === 0) {
+        noFormsMessage.style.display = 'block';
+        return;
+    } else {
+        noFormsMessage.style.display = 'none';
+    }
+
+    filteredForms.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
+
+    for (const form of filteredForms) { 
+        let statusColorClass = 'status-new'; 
+        let statusText = 'New';
+        if (form.status === 'in-progress') {
+            statusColorClass = 'status-in-progress';
+            statusText = 'In Progress';
+        } else if (form.status === 'completed') {
+            statusColorClass = 'status-completed';
+            statusText = 'Completed';
+        }
+        
+        const formRecordings = (await idbKeyval.get(`formRecordings-${form.id}`)) || [];
+        const numNotes = formRecordings.length;
+        
+        const card = document.createElement('div');
+        card.className = `card-item status-bar-indicator ${statusColorClass}`;
+        card.innerHTML = `
+            <div class="card-content">
+                <div class="card-header-actions">
+                    <h3 class="card-item-title">Form #${form.formNumber || 'N/A'} - ${form.title || 'Untitled Form'}</h3>
+                    <div class="card-actions">
+                        <button onclick="navigateTo('edit-page', '${form.id}')" class="icon-button" aria-label="Edit">
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </button>
+                        <button onclick="deleteFormFromHome('${form.id}')" class="icon-button" aria-label="Delete">
+                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="card-item-meta">
+                    ${new Date(form.createdAt).toLocaleDateString('en-US', {day: 'numeric', month: 'short', year: 'numeric'})} • 
+                    ${form.client || 'No Client'} • 
+                    ${form.category || 'General'}
+                </p>
+                <div class="card-footer">
+                    <span class="card-status-pill ${form.status}">${statusText}</span>
+                    <span class="card-stats">${numNotes} Note(s)</span>
+                </div>
+            </div>
+        `;
+        formsListContainer.appendChild(card);
+    }
 }
 
 async function loadInitialData() {
     allFormsMetadata = (await idbKeyval.get('formsMetadata')) || [];
     renderFormsList();
-    // populateCategoryFilter(); // No longer needed for this simplified version
 }
 
 // --- Event Listeners ---
@@ -324,7 +400,6 @@ saveCharacteristicsButton.addEventListener('click', () => {
 });
 
 copyButton.addEventListener('click', () => {
-    // Copy only the text of the new note to the clipboard
     if (newNoteContent.textContent.trim().length > 0) {
         navigator.clipboard.writeText(newNoteContent.textContent).then(() => {
             alert('Text copied!');
@@ -350,5 +425,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Expose functions to the global scope for onclick attributes in dynamically generated HTML
 window.navigateTo = navigateTo;
-window.toggleFavorite = toggleFavorite;
 window.deleteFormFromHome = deleteForm;
