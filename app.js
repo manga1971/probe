@@ -1,428 +1,352 @@
-// app.js
-import { generateUUID, debounce, playIconSVG, pauseIconSVG, startChronometer, stopChronometer, resetChronometer, setupAccordion, showPage } from './common.js';
+// app.js — Forma (refactor minimal, value-first)
+import { $, $$, debounce, generateUUID, formatTime, toast, showPage, storage, Chrono } from './common.js';
 
-// DOM Elements
-const appHeader = document.getElementById('appHeader');
-const appTitle = document.getElementById('appTitle');
-const homeNavButton = document.getElementById('homeNavButton');
-const headerSearchInput = document.getElementById('headerSearchInput');
-const accountSettingsButton = document.getElementById('accountSettingsButton');
-const dictateButtonHome = document.getElementById('dictateButtonHome');
+// --- State ---
+let forms = [];                    // metadata array
+let currentFormId = null;          // active form id
+let isRecording = false;           // recording flag
+let hadError = false;
+let recognition = null;            // webkitSpeechRecognition instance
+const chrono = Chrono();
+let currentText = '';              // in-progress note text
 
-// Home Page Elements
-const formaPage = document.getElementById('forma-page');
-const formsListContainer = document.getElementById('formsList');
-const noFormsMessage = document.getElementById('noFormsMessage');
-const filterStatus = document.getElementById('filterStatus');
-const filterDate = document.getElementById('filterDate');
-const filterCategory = document.getElementById('filterCategory');
+// --- Elements ---
+// Header
+const brandHome = $('#brandHome');
+const headerSearchInput = $('#headerSearchInput');
+const accountBtn = $('#accountBtn');
 
-// Edit Page Elements
-const editPage = document.getElementById('edit-page');
-const formIdentifier = document.getElementById('formIdentifier');
-const formTitle = document.getElementById('formTitle');
-const formClient = document.getElementById('formClient');
-const formCategory = document.getElementById('formCategory');
-const formStatus = document.getElementById('formStatus');
-const plannedDate = document.getElementById('plannedDate');
-const initialNotes = document.getElementById('initialNotes');
-const newNoteContent = document.getElementById('newNoteContent');
-const existingNotesContainer = document.getElementById('existingNotesContainer');
-const detailsAccordionHeader = document.getElementById('detailsAccordionHeader');
-const detailsAccordionContent = detailsAccordionHeader.nextElementSibling;
-const accordionIcon = detailsAccordionHeader.querySelector('.accordion-icon');
-const saveCharacteristicsButton = document.getElementById('saveCharacteristicsButton');
-const playerControls = document.getElementById('playerControls');
-const dictationToggleButton = document.getElementById('dictationToggleButton');
-const pulsatingLed = document.getElementById('pulsatingLed');
-const chronometer = document.getElementById('chronometer');
-const copyButton = document.getElementById('copyButton');
-const saveButton = document.getElementById('saveButton');
-const deleteButton = document.getElementById('deleteButton');
-const playButton = document.getElementById('playButton'); // Added play button
+// Home
+const homePage = $('#homePage');
+const formsList = $('#formsList');
+const noForms = $('#noForms');
+const filterStatus = $('#filterStatus');
+const filterDate = $('#filterDate');
+const filterCategory = $('#filterCategory');
+const newFormBtn = $('#newFormBtn');
+const dictateButtonHome = $('#dictateButtonHome');
 
-// Global state variables
-let allFormsMetadata = [];
-let currentFormId = null;
-let isDictating = false;
-let recognition;
-let dictatedText = '';
-let currentFormRecordings = '';
+// Edit
+const editPage = $('#editPage');
+const formIdLabel = $('#formIdLabel');
+const deleteFormBtn = $('#deleteFormBtn');
+const formTitle = $('#formTitle');
+const formCategory = $('#formCategory');
+const formStatus = $('#formStatus');
+const speechLang = $('#speechLang');
+const newNote = $('#newNote');
+const existingNotes = $('#existingNotes');
 
-// --- Navigation and Page Management ---
-function navigateTo(pageId, formId = null) {
-    showPage(pageId);
-    appTitle.textContent = 'Forma';
-    playerControls.style.display = 'none';
-    dictateButtonHome.style.display = 'none';
-    headerSearchInput.style.display = 'none';
+// Player
+const playerBar = $('#playerBar');
+const pauseBtn = $('#pauseBtn');
+const recIndicator = $('#recIndicator');
+const playerTime = $('#playerTime');
+const copyBtn = $('#copyBtn');
+const saveBtn = $('#saveBtn');
+const deleteBtn = $('#deleteBtn');
 
-    if (pageId === 'forma-page') {
-        dictateButtonHome.style.display = 'flex';
-        headerSearchInput.style.display = 'flex';
-        appHeader.style.padding = '1rem';
-        appHeader.style.borderRadius = '1rem';
-        loadInitialData();
-    } else if (pageId === 'edit-page') {
-        playerControls.style.display = 'flex';
-        appHeader.style.padding = '1rem 1rem 0';
-        appHeader.style.borderRadius = '1rem 1rem 0 0';
-        initializeEditPage(formId);
-    }
+// --- Init ---
+document.addEventListener('DOMContentLoaded', init);
+async function init(){
+  // Load persisted metadata
+  forms = await (storage.get('formsMetadata') || Promise.resolve([])) || [];
+  renderHome();
+  wireHeader();
+  wireHomeFilters();
+  wirePlayer();
+  chrono.on(sec => playerTime.textContent = formatTime(sec));
 }
 
-function initializeEditPage(formId) {
-    if (formId) {
-        // Load existing form
-        const formToEdit = allFormsMetadata.find(f => f.id === formId);
-        if (formToEdit) {
-            currentFormId = formToEdit.id;
-            formTitle.value = formToEdit.title || '';
-            formClient.value = formToEdit.client || '';
-            formCategory.value = formToEdit.category || '';
-            formStatus.value = formToEdit.status || 'not-started';
-            plannedDate.value = formToEdit.plannedDate || '';
-            initialNotes.value = formToEdit.notes || '';
-            formIdentifier.textContent = `Form #${formToEdit.formNumber}`;
-            formIdentifier.style.display = 'block';
-            loadNotes(formId);
-        }
-    } else {
-        // Reset for new form
-        currentFormId = null;
-        formIdentifier.textContent = 'Form #';
-        formIdentifier.style.display = 'none';
-        newNoteContent.textContent = 'Press "Start" to begin dictation...';
-        existingNotesContainer.innerHTML = '';
-        formTitle.value = '';
-        formClient.value = '';
-        formCategory.value = '';
-        formStatus.value = 'not-started';
-        plannedDate.value = '';
-        initialNotes.value = '';
-        updatePlayerUI('stopped');
-    }
-    setupAccordion('detailsAccordionHeader');
+// --- Header wiring ---
+function wireHeader(){
+  brandHome.addEventListener('click', (e)=>{ e.preventDefault(); navigateHome(); });
+  headerSearchInput.addEventListener('input', debounce(()=> renderHome(), 160));
+  accountBtn.addEventListener('click', ()=> toast('Account soon'));
 }
 
-async function loadNotes(formId) {
-    const formRecordings = (await idbKeyval.get(`formRecordings-${formId}`)) || [];
-    existingNotesContainer.innerHTML = '';
-    formRecordings.forEach((record, index) => {
-        const noteElement = document.createElement('div');
-        noteElement.className = `glass-container note-item`;
-        noteElement.innerHTML = `
-            <div class="note-header">
-                <span class="note-label">Note ${formRecordings.length - index}</span>
-                <button class="favorite-toggle ${record.isImportant ? 'active' : ''}" data-note-id="${record.id}">
-                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 17.27l-4.11 2.27 1.1-4.68-3.57-3.1 4.71-.41L12 3.23l1.87 4.35 4.71.41-3.57 3.1 1.1 4.68z"/></svg>
-                </button>
-            </div>
-            <div class="note-text">${record.text}</div>
-        `;
-        existingNotesContainer.appendChild(noteElement);
-    });
+// --- Home wiring ---
+function wireHomeFilters(){
+  [filterStatus, filterDate, filterCategory].forEach(el => el.addEventListener('change', renderHome));
+  newFormBtn.addEventListener('click', () => {
+    const id = createForm();
+    openForm(id, {autoStart:false});
+  });
+  dictateButtonHome.addEventListener('click', () => {
+    const id = createForm();
+    openForm(id, {autoStart:true});
+  });
 }
 
-// --- Player Logic and Dictation ---
-function updatePlayerUI(state) {
-    if (state === 'recording') {
-        pulsatingLed.classList.add('active');
-        dictationToggleButton.innerHTML = pauseIconSVG;
-    } else if (state === 'paused') {
-        pulsatingLed.classList.remove('active');
-        dictationToggleButton.innerHTML = playIconSVG;
-    } else { // stopped
-        pulsatingLed.classList.remove('active');
-        dictationToggleButton.innerHTML = playIconSVG;
-        resetChronometer('chronometer');
-    }
+// --- Player wiring ---
+function wirePlayer(){
+  pauseBtn.addEventListener('click', () => {
+    if(!recognition){ return; }
+    if(isRecording){ pauseRecording(); } else { resumeRecording(); }
+  });
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(newNote.value || ''); toast('Copied'); } catch(e){ console.warn(e); }
+  });
+  saveBtn.addEventListener('click', saveCurrentNote);
+  deleteBtn.addEventListener('click', () => { newNote.value = ''; currentText=''; toast('Cleared'); });
 }
 
-async function startDictation() {
-    if (!('webkitSpeechRecognition' in window)) {
-        alert("Web Speech API is not supported in this browser. Please use Chrome or a similar browser.");
-        return;
-    }
-    
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onstart = () => {
-        isDictating = true;
-        updatePlayerUI('recording');
-        startChronometer('chronometer');
-    };
-
-    recognition.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
-        }
-        newNoteContent.textContent = dictatedText + finalTranscript + interimTranscript;
-    };
-    
-    recognition.onend = () => {
-        isDictating = false;
-        updatePlayerUI('stopped');
-        stopChronometer();
-        if (newNoteContent.textContent.trim().length > 0) {
-            saveNewNote(newNoteContent.textContent);
-        }
-    };
-    
-    recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        stopDictation();
-    };
-
-    if (newNoteContent.textContent.includes("Press \"Start\" to begin dictation...")) {
-        newNoteContent.textContent = '';
-    }
-    dictatedText = newNoteContent.textContent.trim();
-    recognition.start();
+// --- Navigation ---
+function navigateHome(){
+  showPage('homePage');
+  playerBar.style.display = 'none';
+  currentFormId = null;
+  headerSearchInput.value = headerSearchInput.value; // keep search text
+  renderHome();
+}
+function openForm(id, {autoStart=false}={}){
+  currentFormId = id;
+  formIdLabel.textContent = `Form # ${id.slice(0,5).toUpperCase()}`;
+  const meta = forms.find(f => f.id === id);
+  formTitle.value = meta?.title || '';
+  formCategory.value = meta?.category || '';
+  formStatus.value = meta?.status || 'not-started';
+  speechLang.value = (localStorage.getItem('speechLang') || 'ro-RO');
+  newNote.value = '';
+  existingNotes.replaceChildren();
+  renderNotes();
+  playerBar.style.display = 'flex';
+  showPage('editPage');
+  if(autoStart) startRecording();
 }
 
-function stopDictation() {
-    if (recognition) {
-        recognition.stop();
-    }
+// --- Render Home ---
+function renderHome(){
+  // populate categories
+  const cats = new Set(forms.map(f=>f.category).filter(Boolean));
+  filterCategory.replaceChildren(new Option('All categories','all'));
+  [...cats].sort().forEach(c => filterCategory.append(new Option(c, c)));
+
+  const q = (headerSearchInput.value || '').trim().toLowerCase();
+  const st = filterStatus.value;
+  const dt = filterDate.value;
+  const cat = filterCategory.value;
+
+  const filtered = forms.filter(f => {
+    const okQ = !q || (f.title?.toLowerCase().includes(q) || (f.category||'').toLowerCase().includes(q));
+    const okS = st==='all' || f.status===st;
+    const okC = cat==='all' || f.category===cat;
+    const okD = !dt || (new Date(f.updatedAt).toISOString().slice(0,10) === dt);
+    return okQ && okS && okC && okD;
+  }).sort((a,b)=> new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  formsList.replaceChildren();
+  if(!filtered.length){
+    noForms.classList.remove('hidden');
+  }else{
+    noForms.classList.add('hidden');
+    filtered.forEach(meta => formsList.append(renderFormCard(meta)));
+  }
 }
 
-function pauseDictation() {
-    if (isDictating) {
-        isDictating = false;
-        updatePlayerUI('paused');
-        stopChronometer();
-        dictatedText = newNoteContent.textContent.trim();
-        recognition.stop();
-    }
+function renderFormCard(meta){
+  const card = document.createElement('article');
+  card.className = 'card';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'row';
+  const h = document.createElement('h3');
+  h.textContent = meta.title || 'Untitled';
+  titleRow.append(h);
+  const pill = document.createElement('span');
+  pill.className = 'pill';
+  pill.textContent = meta.status.replace('-',' ').toUpperCase();
+  titleRow.append(pill);
+  card.append(titleRow);
+
+  const metaRow = document.createElement('div');
+  metaRow.className = 'meta';
+  metaRow.textContent = `${meta.category||'–'} • ${new Date(meta.updatedAt).toLocaleString()}`;
+  card.append(metaRow);
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  const editBtn = document.createElement('button');
+  editBtn.className = 'icon-btn tiny';
+  editBtn.title = 'Edit';
+  editBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+  editBtn.addEventListener('click', ()=> openForm(meta.id, {autoStart:false}));
+  const dictateBtn = document.createElement('button');
+  dictateBtn.className = 'icon-btn tiny';
+  dictateBtn.title = 'Dictate';
+  dictateBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 19a7 7 0 0 0 7-7h-2a5 5 0 1 1-10 0H5a7 7 0 0 0 7 7z"/></svg>';
+  dictateBtn.addEventListener('click', ()=> openForm(meta.id, {autoStart:true}));
+  const delBtn = document.createElement('button');
+  delBtn.className = 'icon-btn tiny danger';
+  delBtn.title = 'Delete';
+  delBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7zm3-3h6l1 1h4v2H4V5h4l1-1z"/></svg>';
+  delBtn.addEventListener('click', async ()=>{ await deleteForm(meta.id); });
+
+  actions.append(editBtn, dictateBtn, delBtn);
+  card.append(actions);
+  return card;
 }
 
-async function saveNewNote(text) {
-    if (!currentFormId) {
-        await createNewFormMetadata();
-    }
-    
-    const formRecordings = (await idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
-    const segmentMetaData = {
-        id: generateUUID(),
-        formId: currentFormId,
-        text: text.trim(),
-        timestamp: new Date().toISOString(),
-        isImportant: false,
-    };
-    
-    formRecordings.unshift(segmentMetaData);
-    await idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
-    await loadNotes(currentFormId);
-    newNoteContent.textContent = ''; // Clear new note box after saving
+// --- Forms CRUD ---
+function createForm(){
+  const id = generateUUID();
+  const meta = { id, title:'', category:'', status:'not-started', createdAt: Date.now(), updatedAt: Date.now(), noteCount:0 };
+  forms.unshift(meta);
+  persistForms();
+  return id;
 }
 
-// --- Form & Data Management ---
-async function createNewFormMetadata() {
-    let lastFormSequenceNumber = (await idbKeyval.get('lastFormSequenceNumber')) || 0;
-    const newFormNumber = ++lastFormSequenceNumber;
-    await idbKeyval.set('lastFormSequenceNumber', newFormNumber);
-    
-    currentFormId = generateUUID();
-    const now = new Date();
-    
-    const formData = {
-        id: currentFormId,
-        formNumber: newFormNumber,
-        title: formTitle.value || `Form #${newFormNumber}`,
-        client: formClient.value,
-        category: formCategory.value,
-        status: formStatus.value,
-        notes: initialNotes.value,
-        plannedDate: plannedDate.value,
-        createdAt: now.toISOString(),
-        lastModified: now.toISOString(),
-        isFavorite: false,
-    };
-    
-    allFormsMetadata.unshift(formData);
-    await idbKeyval.set('formsMetadata', allFormsMetadata);
-    
-    formIdentifier.textContent = `Form #${newFormNumber}`;
-    formIdentifier.style.display = 'block';
+async function deleteForm(id=currentFormId){
+  if(!id) return;
+  if(!confirm('Delete this form and all its notes?')) return;
+  forms = forms.filter(f=>f.id!==id);
+  await storage.del(`formNotes:${id}`);
+  persistForms();
+  toast('Deleted');
+  navigateHome();
 }
 
-async function saveFormChanges() {
-    if (!currentFormId) {
-        return;
-    }
-    
-    const formToUpdate = allFormsMetadata.find(f => f.id === currentFormId);
-    if (formToUpdate) {
-        formToUpdate.title = formTitle.value;
-        formToUpdate.client = formClient.value;
-        formToUpdate.category = formCategory.value;
-        formToUpdate.status = formStatus.value;
-        formToUpdate.notes = initialNotes.value;
-        formToUpdate.plannedDate = plannedDate.value;
-        formToUpdate.lastModified = new Date().toISOString();
-        await idbKeyval.set('formsMetadata', allFormsMetadata);
-    }
+function persistForms(){ storage.set('formsMetadata', forms); renderHome(); }
+
+deleteFormBtn.addEventListener('click', ()=> deleteForm(currentFormId));
+
+// --- Notes ---
+async function getNotes(){
+  return await (storage.get(`formNotes:${currentFormId}`) || Promise.resolve([])) || [];
+}
+async function setNotes(list){
+  await storage.set(`formNotes:${currentFormId}`, list);
 }
 
-async function deleteForm() {
-    if (!currentFormId) return;
-    if (confirm('Are you sure you want to delete this form?')) {
-        allFormsMetadata = allFormsMetadata.filter(f => f.id !== currentFormId);
-        await idbKeyval.set('formsMetadata', allFormsMetadata);
-        await idbKeyval.del(`formRecordings-${currentFormId}`);
-        navigateTo('forma-page');
-    }
+async function renderNotes(){
+  const list = await getNotes();
+  // important first, then newest
+  list.sort((a,b)=> (b.isImportant|0)-(a.isImportant|0) || b.createdAt - a.createdAt);
+  existingNotes.replaceChildren(...list.map(renderNote));
 }
 
-// --- Rendering Home Page ---
-async function renderFormsList(searchQuery = '', status = 'all', date = '', category = 'all') {
-    let filteredForms = allFormsMetadata;
+function renderNote(n){
+  const wrap = document.createElement('div');
+  wrap.className = 'note';
+  const num = document.createElement('div'); num.className = 'num'; num.textContent = `#${n.number}`;
+  const text = document.createElement('div'); text.className = 'text'; text.textContent = n.text;
+  const actions = document.createElement('div'); actions.className = 'note-actions';
 
-    if (searchQuery) {
-        const lowerCaseQuery = searchQuery.toLowerCase();
-        filteredForms = filteredForms.filter(form => 
-            (form.title && form.title.toLowerCase().includes(lowerCaseQuery)) ||
-            (form.client && form.client.toLowerCase().includes(lowerCaseQuery)) ||
-            (form.category && form.category.toLowerCase().includes(lowerCaseQuery)) ||
-            (form.formNumber && String(form.formNumber).includes(lowerCaseQuery))
-        );
-    }
-    
-    if (status !== 'all') {
-        filteredForms = filteredForms.filter(form => form.status === status);
-    }
-    
-    if (date) {
-        const filterDateFormatted = new Date(date).toISOString().split('T')[0];
-        filteredForms = filteredForms.filter(form => {
-            const formDateFormatted = new Date(form.createdAt).toISOString().split('T')[0];
-            return formDateFormatted === filterDateFormatted;
-        });
-    }
-    
-    if (category !== 'all') {
-        filteredForms = filteredForms.filter(form => form.category === category);
-    }
+  const fav = btnIcon(n.isImportant ? '★' : '☆', 'Mark important');
+  fav.addEventListener('click', async ()=>{
+    const list = await getNotes();
+    const it = list.find(x=>x.id===n.id); if(!it) return;
+    it.isImportant = !it.isImportant; await setNotes(list); renderNotes();
+  });
 
-    formsListContainer.innerHTML = ''; 
+  const copy = btnSVG('<path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/>','Copy');
+  copy.addEventListener('click', async ()=>{ await navigator.clipboard.writeText(n.text); toast('Copied'); });
 
-    if (filteredForms.length === 0) {
-        noFormsMessage.style.display = 'block';
-        return;
-    } else {
-        noFormsMessage.style.display = 'none';
-    }
+  const del = btnSVG('<path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7zm3-3h6l1 1h4v2H4V5h4l1-1z"/>','Delete');
+  del.classList.add('danger');
+  del.addEventListener('click', async ()=>{
+    const list = await getNotes();
+    const next = list.filter(x=>x.id!==n.id);
+    await setNotes(next); toast('Deleted note'); renderNotes();
+    const meta = forms.find(f=>f.id===currentFormId);
+    meta.noteCount = next.length; meta.updatedAt = Date.now(); persistForms();
+  });
 
-    filteredForms.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
-
-    for (const form of filteredForms) { 
-        let statusColorClass = 'status-new'; 
-        let statusText = 'New';
-        if (form.status === 'in-progress') {
-            statusColorClass = 'status-in-progress';
-            statusText = 'In Progress';
-        } else if (form.status === 'completed') {
-            statusColorClass = 'status-completed';
-            statusText = 'Completed';
-        }
-        
-        const formRecordings = (await idbKeyval.get(`formRecordings-${form.id}`)) || [];
-        const numNotes = formRecordings.length;
-        
-        const card = document.createElement('div');
-        card.className = `card-item status-bar-indicator ${statusColorClass}`;
-        card.innerHTML = `
-            <div class="card-content">
-                <div class="card-header-actions">
-                    <h3 class="card-item-title">Form #${form.formNumber || 'N/A'} - ${form.title || 'Untitled Form'}</h3>
-                    <div class="card-actions">
-                        <button onclick="navigateTo('edit-page', '${form.id}')" class="icon-button" aria-label="Edit">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                        </button>
-                        <button onclick="deleteFormFromHome('${form.id}')" class="icon-button" aria-label="Delete">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                        </button>
-                    </div>
-                </div>
-                <p class="card-item-meta">
-                    ${new Date(form.createdAt).toLocaleDateString('en-US', {day: 'numeric', month: 'short', year: 'numeric'})} • 
-                    ${form.client || 'No Client'} • 
-                    ${form.category || 'General'}
-                </p>
-                <div class="card-footer">
-                    <span class="card-status-pill ${form.status}">${statusText}</span>
-                    <span class="card-stats">${numNotes} Note(s)</span>
-                </div>
-            </div>
-        `;
-        formsListContainer.appendChild(card);
-    }
+  actions.append(fav, copy, del);
+  wrap.append(num, text, actions);
+  return wrap;
 }
 
-async function loadInitialData() {
-    allFormsMetadata = (await idbKeyval.get('formsMetadata')) || [];
-    renderFormsList();
+function btnIcon(txt, title){ const b=document.createElement('button'); b.className='icon-btn'; b.title=title; b.textContent=txt; return b; }
+function btnSVG(path, title){ const b=document.createElement('button'); b.className='icon-btn'; b.title=title; b.innerHTML = `<svg viewBox="0 0 24 24" class="icon">${path}</svg>`; return b; }
+
+// Save current text as note
+async function saveCurrentNote(){
+  const text = (newNote.value || '').trim();
+  if(!text){ toast('Nothing to save'); return; }
+  const list = await getNotes();
+  const nextNum = list.length ? Math.max(...list.map(n=>n.number))+1 : 1;
+  const note = { id: generateUUID(), number: nextNum, text, createdAt: Date.now(), isImportant:false };
+  list.push(note);
+  await setNotes(list);
+  newNote.value='';
+  toast('Saved');
+  renderNotes();
+  // auto-title if empty
+  if(!formTitle.value){
+    formTitle.value = text.split(/\s+/).slice(0,8).join(' ');
+    saveFormMeta();
+  }
+  const meta = forms.find(f=>f.id===currentFormId);
+  meta.noteCount = list.length; meta.updatedAt = Date.now(); persistForms();
 }
 
-// --- Event Listeners ---
-homeNavButton.addEventListener('click', (e) => {
-    e.preventDefault();
-    navigateTo('forma-page');
+// --- Form meta save ---
+function saveFormMeta(){
+  const meta = forms.find(f=>f.id===currentFormId);
+  if(!meta) return;
+  meta.title = formTitle.value.trim();
+  meta.category = formCategory.value.trim();
+  meta.status = formStatus.value;
+  meta.updatedAt = Date.now();
+  localStorage.setItem('speechLang', speechLang.value);
+  persistForms();
+}
+[formTitle, formCategory, formStatus, speechLang].forEach(el => el.addEventListener('change', saveFormMeta));
+
+// --- Recording ---
+function setupRecognition(){
+  if(!('webkitSpeechRecognition' in window)){
+    alert('Dictation not supported on this browser. You can type your note.');
+    return null;
+  }
+  const rec = new webkitSpeechRecognition(); // eslint-disable-line
+  rec.lang = (localStorage.getItem('speechLang') || speechLang.value || 'ro-RO');
+  rec.interimResults = true;
+  rec.continuous = true;
+  rec.onstart = () => { isRecording = true; hadError=false; recIndicator.classList.remove('idle'); chrono.start(); };
+  rec.onerror = (e) => { console.warn('rec error', e); hadError = true; };
+  rec.onend = async () => {
+    isRecording = false; recIndicator.classList.add('idle'); chrono.pause();
+    // do not auto-save if we had an error/abort
+    if(!hadError){
+      currentText = newNote.value.trim();
+      if(currentText) toast('Recording stopped');
+    }
+  };
+  rec.onresult = (ev) => {
+    let text = '';
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const res = ev.results[i];
+      text += res[0].transcript;
+    }
+    newNote.value = text;
+  };
+  return rec;
+}
+
+function startRecording(){
+  if(isRecording) return;
+  recognition = setupRecognition();
+  if(!recognition){ return; }
+  try{ recognition.start(); }catch(e){ console.warn(e); }
+}
+function pauseRecording(){
+  if(!isRecording) return;
+  try{ recognition.stop(); }catch(e){}
+}
+function resumeRecording(){
+  if(isRecording) return;
+  hadError=false;
+  recognition = setupRecognition();
+  if(!recognition){ return; }
+  try{ recognition.start(); }catch(e){}
+}
+
+// --- Events for typing ---
+newNote.addEventListener('keydown', (e)=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); saveCurrentNote(); }
 });
 
-dictateButtonHome.addEventListener('click', () => {
-    navigateTo('edit-page');
-});
-
-dictationToggleButton.addEventListener('click', () => {
-    if (isDictating) {
-        pauseDictation();
-    } else {
-        startDictation();
-    }
-});
-
-saveCharacteristicsButton.addEventListener('click', () => {
-    saveFormChanges();
-    if (detailsAccordionContent.classList.contains('expanded')) {
-        detailsAccordionHeader.click();
-    }
-});
-
-copyButton.addEventListener('click', () => {
-    if (newNoteContent.textContent.trim().length > 0) {
-        navigator.clipboard.writeText(newNoteContent.textContent).then(() => {
-            alert('Text copied!');
-        });
-    }
-});
-
-saveButton.addEventListener('click', async () => {
-    if (newNoteContent.textContent.trim().length > 0) {
-        await saveNewNote(newNoteContent.textContent);
-    }
-    await saveFormChanges();
-    alert('Changes saved!');
-});
-
-deleteButton.addEventListener('click', async () => {
-    await deleteForm();
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-    navigateTo('forma-page');
-});
-
-// Expose functions to the global scope for onclick attributes in dynamically generated HTML
-window.navigateTo = navigateTo;
-window.deleteFormFromHome = deleteForm;
+// --- Expose minimal globals (optional) ---
+window.openForm = openForm;
