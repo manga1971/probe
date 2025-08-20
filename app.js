@@ -1,9 +1,10 @@
 // app.js
-import { generateUUID, debounce, playIconSVG, pauseIconSVG, startChronometer, stopChronometer, resetChronometer, setupAccordion, showPage, updateNavState } from './common.js';
+import { generateUUID, debounce, playIconSVG, pauseIconSVG, startChronometer, stopChronometer, resetChronometer, setupAccordion, showPage } from './common.js';
 
 // DOM Elements
 const appHeader = document.getElementById('appHeader');
 const appTitle = document.getElementById('appTitle');
+const homeNavButton = document.getElementById('homeNavButton');
 const headerSearchInput = document.getElementById('headerSearchInput');
 const accountSettingsButton = document.getElementById('accountSettingsButton');
 const dictateButtonHome = document.getElementById('dictateButtonHome');
@@ -25,16 +26,19 @@ const formCategory = document.getElementById('formCategory');
 const formStatus = document.getElementById('formStatus');
 const plannedDate = document.getElementById('plannedDate');
 const initialNotes = document.getElementById('initialNotes');
-const transcriptionContent = document.getElementById('transcriptionContent');
 const detailsAccordionHeader = document.getElementById('detailsAccordionHeader');
 const detailsAccordionContent = detailsAccordionHeader.nextElementSibling;
 const accordionIcon = detailsAccordionHeader.querySelector('.accordion-icon');
 const saveCharacteristicsButton = document.getElementById('saveCharacteristicsButton');
+const newNoteContent = document.getElementById('newNoteContent');
+const existingNotesContainer = document.getElementById('existingNotesContainer');
+const playerControls = document.getElementById('playerControls');
 const dictationToggleButton = document.getElementById('dictationToggleButton');
 const pulsatingLed = document.getElementById('pulsatingLed');
 const chronometer = document.getElementById('chronometer');
-const copyAndSaveButton = document.getElementById('copyAndSaveButton');
-const deleteFormButton = document.getElementById('deleteFormButton');
+const copyButton = document.getElementById('copyButton');
+const saveButton = document.getElementById('saveButton');
+const deleteButton = document.getElementById('deleteButton');
 
 // Global state variables
 let allFormsMetadata = [];
@@ -42,24 +46,26 @@ let currentFormId = null;
 let isDictating = false;
 let recognition;
 let dictatedText = '';
-let currentFormRecordings = '';
+let currentFormRecordings = = '';
 
 // --- Navigation and Page Management ---
 function navigateTo(pageId, formId = null) {
     showPage(pageId);
     appTitle.textContent = 'Forma';
+    playerControls.style.display = 'none';
+    dictateButtonHome.style.display = 'none';
+    headerSearchInput.style.display = 'none';
 
     if (pageId === 'forma-page') {
-        headerSearchInput.style.display = 'flex';
-        appHeader.classList.add('app-header-compact');
         dictateButtonHome.style.display = 'flex';
+        headerSearchInput.style.display = 'flex';
+        appHeader.style.padding = '1rem';
+        appHeader.style.borderRadius = '1rem';
         loadInitialData();
-        renderFormsList();
     } else if (pageId === 'edit-page') {
-        headerSearchInput.style.display = 'none';
-        appHeader.classList.remove('app-header-compact');
-        dictateButtonHome.style.display = 'none';
-        setupAccordion('detailsAccordionHeader');
+        playerControls.style.display = 'flex';
+        appHeader.style.padding = '1rem 1rem 0';
+        appHeader.style.borderRadius = '1rem 1rem 0 0';
         initializeEditPage(formId);
     }
 }
@@ -78,13 +84,15 @@ function initializeEditPage(formId) {
             initialNotes.value = formToEdit.notes || '';
             formIdentifier.textContent = `Form #${formToEdit.formNumber}`;
             formIdentifier.style.display = 'block';
-            loadTranscriptionContent(formId);
+            loadNotes(formId);
         }
     } else {
         // Reset for new form
         currentFormId = null;
+        formIdentifier.textContent = 'Form #';
         formIdentifier.style.display = 'none';
-        transcriptionContent.textContent = 'Press "Start" to begin dictation...';
+        newNoteContent.textContent = 'Press "Start" to begin dictation...';
+        existingNotesContainer.innerHTML = '';
         formTitle.value = '';
         formClient.value = '';
         formCategory.value = '';
@@ -93,27 +101,26 @@ function initializeEditPage(formId) {
         initialNotes.value = '';
         updatePlayerUI('stopped');
     }
+    setupAccordion('detailsAccordionHeader');
 }
 
-async function loadTranscriptionContent(formId) {
+async function loadNotes(formId) {
     const formRecordings = (await idbKeyval.get(`formRecordings-${formId}`)) || [];
-    transcriptionContent.innerHTML = formatTranscriptionWithNotes(formRecordings);
-}
-
-function formatTranscriptionWithNotes(recordings) {
-    let html = '';
-    recordings.forEach((record, index) => {
-        html += `<div class="note-item" data-note-id="${record.id}">
-                    <div class="note-header">
-                        <span class="note-label">Note ${recordings.length - index}</span>
-                        <button class="favorite-toggle ${record.isImportant ? 'active' : ''}">
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 17.27l-4.11 2.27 1.1-4.68-3.57-3.1 4.71-.41L12 3.23l1.87 4.35 4.71.41-3.57 3.1 1.1 4.68z"/></svg>
-                        </button>
-                    </div>
-                    <div class="note-text">${record.text}</div>
-                 </div>`;
+    existingNotesContainer.innerHTML = '';
+    formRecordings.forEach((record, index) => {
+        const noteElement = document.createElement('div');
+        noteElement.className = `glass-container note-item`;
+        noteElement.innerHTML = `
+            <div class="note-header">
+                <span class="note-label">Note ${formRecordings.length - index}</span>
+                <button class="favorite-toggle ${record.isImportant ? 'active' : ''}" data-note-id="${record.id}">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 17.27l-4.11 2.27 1.1-4.68-3.57-3.1 4.71-.41L12 3.23l1.87 4.35 4.71.41-3.57 3.1 1.1 4.68z"/></svg>
+                </button>
+            </div>
+            <div class="note-text">${record.text}</div>
+        `;
+        existingNotesContainer.appendChild(noteElement);
     });
-    return html;
 }
 
 // --- Player Logic and Dictation ---
@@ -131,7 +138,7 @@ function updatePlayerUI(state) {
     }
 }
 
-function startDictation() {
+async function startDictation() {
     if (!('webkitSpeechRecognition' in window)) {
         alert("Web Speech API is not supported in this browser. Please use Chrome or a similar browser.");
         return;
@@ -158,16 +165,15 @@ function startDictation() {
                 interimTranscript += event.results[i][0].transcript;
             }
         }
-        transcriptionContent.innerHTML = dictatedText + finalTranscript + interimTranscript;
-        transcriptionContent.scrollTop = transcriptionContent.scrollHeight;
+        newNoteContent.textContent = dictatedText + finalTranscript + interimTranscript;
     };
     
     recognition.onend = () => {
         isDictating = false;
         updatePlayerUI('stopped');
         stopChronometer();
-        if (transcriptionContent.textContent.trim().length > 0) {
-            saveDictatedSegment(transcriptionContent.textContent);
+        if (newNoteContent.textContent.trim().length > 0) {
+            saveNewNote(newNoteContent.textContent);
         }
     };
     
@@ -176,10 +182,10 @@ function startDictation() {
         stopDictation();
     };
 
-    dictatedText = transcriptionContent.textContent.trim();
-    if (dictatedText === 'Press "Start" to begin dictation...') {
-        dictatedText = '';
+    if (newNoteContent.textContent.includes("Press \"Start\" to begin dictation...")) {
+        newNoteContent.textContent = '';
     }
+    dictatedText = newNoteContent.textContent.trim();
     recognition.start();
 }
 
@@ -194,31 +200,30 @@ function pauseDictation() {
         isDictating = false;
         updatePlayerUI('paused');
         stopChronometer();
-        dictatedText = transcriptionContent.textContent.trim();
+        dictatedText = newNoteContent.textContent.trim();
         recognition.stop();
     }
 }
 
-async function saveDictatedSegment(text) {
+async function saveNewNote(text) {
     if (!currentFormId) {
         await createNewFormMetadata();
     }
     
     const formRecordings = (await idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
-    
     const segmentMetaData = {
         id: generateUUID(),
         formId: currentFormId,
         text: text.trim(),
         timestamp: new Date().toISOString(),
-        isImportant: false, // Default to not important
+        isImportant: false,
     };
     
     formRecordings.unshift(segmentMetaData);
     await idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
-    await loadTranscriptionContent(currentFormId);
+    await loadNotes(currentFormId);
+    newNoteContent.textContent = ''; // Clear new note box after saving
 }
-
 
 // --- Form & Data Management ---
 async function createNewFormMetadata() {
@@ -232,15 +237,15 @@ async function createNewFormMetadata() {
     const formData = {
         id: currentFormId,
         formNumber: newFormNumber,
-        title: formTitle.value || `Form #${newFormNumber}`,
-        client: formClient.value,
-        category: formCategory.value,
-        status: formStatus.value,
-        notes: initialNotes.value,
-        plannedDate: plannedDate.value,
+        title: 'Untitled Form',
+        client: '',
+        category: '',
+        status: 'not-started',
+        notes: '',
+        plannedDate: '',
         createdAt: now.toISOString(),
         lastModified: now.toISOString(),
-        isFavorite: false, // Default to not favorite
+        isFavorite: false,
     };
     
     allFormsMetadata.unshift(formData);
@@ -265,40 +270,17 @@ async function saveFormChanges() {
         formToUpdate.plannedDate = plannedDate.value;
         formToUpdate.lastModified = new Date().toISOString();
         await idbKeyval.set('formsMetadata', allFormsMetadata);
-
-        // Save transcription changes
-        const formRecordings = (await idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
-        if (formRecordings.length > 0) {
-            formRecordings[0].text = transcriptionContent.textContent;
-            await idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
-        }
     }
 }
 
-async function toggleFavorite(formId) {
-    const formIndex = allFormsMetadata.findIndex(f => f.id === formId);
-    if (formIndex !== -1) {
-        allFormsMetadata[formIndex].isFavorite = !allFormsMetadata[formIndex].isFavorite;
+async function deleteForm() {
+    if (!currentFormId) return;
+    if (confirm('Are you sure you want to delete this form?')) {
+        allFormsMetadata = allFormsMetadata.filter(f => f.id !== currentFormId);
         await idbKeyval.set('formsMetadata', allFormsMetadata);
-        renderFormsList();
+        await idbKeyval.del(`formRecordings-${currentFormId}`);
+        navigateTo('forma-page');
     }
-}
-
-async function toggleImportantNote(noteId) {
-    const formRecordings = (await idbKeyval.get(`formRecordings-${currentFormId}`)) || [];
-    const noteIndex = formRecordings.findIndex(n => n.id === noteId);
-    if (noteIndex !== -1) {
-        formRecordings[noteIndex].isImportant = !formRecordings[noteIndex].isImportant;
-        await idbKeyval.set(`formRecordings-${currentFormId}`, formRecordings);
-        loadTranscriptionContent(currentFormId);
-    }
-}
-
-function resetNewFormState() {
-    currentFormId = null;
-    isDictating = false;
-    dictatedText = '';
-    stopDictation(); // Ensure recognition is stopped
 }
 
 // --- Rendering Home Page ---
@@ -309,7 +291,18 @@ async function renderFormsList(searchQuery = '', status = 'all', date = '', cate
     // ... rendering logic for form cards
 }
 
+async function loadInitialData() {
+    allFormsMetadata = (await idbKeyval.get('formsMetadata')) || [];
+    renderFormsList();
+    // populateCategoryFilter(); // No longer needed for this simplified version
+}
+
 // --- Event Listeners ---
+homeNavButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateTo('forma-page');
+});
+
 dictateButtonHome.addEventListener('click', () => {
     navigateTo('edit-page');
 });
@@ -322,35 +315,49 @@ dictationToggleButton.addEventListener('click', () => {
     }
 });
 
-copyAndSaveButton.addEventListener('click', async () => {
-    await saveFormChanges();
-    if (transcriptionContent.textContent.trim().length > 0) {
-        navigator.clipboard.writeText(transcriptionContent.textContent).then(() => {
-            alert('Text copied and saved!');
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-            alert('Failed to copy text.');
+saveCharacteristicsButton.addEventListener('click', () => {
+    saveFormChanges();
+    if (detailsAccordionContent.classList.contains('expanded')) {
+        detailsAccordionHeader.click();
+    }
+});
+
+copyButton.addEventListener('click', () => {
+    // Copy only the text of the new note to the clipboard
+    if (newNoteContent.textContent.trim().length > 0) {
+        navigator.clipboard.writeText(newNoteContent.textContent).then(() => {
+            alert('Text copied!');
         });
     }
 });
 
-deleteFormButton.addEventListener('click', async () => {
-    if (!currentFormId) return;
-    if (confirm('Are you sure you want to delete this form?')) {
-        allFormsMetadata = allFormsMetadata.filter(f => f.id !== currentFormId);
-        await idbKeyval.set('formsMetadata', allFormsMetadata);
-        await idbKeyval.del(`formRecordings-${currentFormId}`);
-        navigateTo('forma-page');
+saveButton.addEventListener('click', async () => {
+    if (newNoteContent.textContent.trim().length > 0) {
+        await saveNewNote(newNoteContent.textContent);
     }
+    await saveFormChanges();
+    alert('Changes saved!');
 });
 
-// Initial load
+deleteButton.addEventListener('click', async () => {
+    await deleteForm();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
-    allFormsMetadata = (await idbKeyval.get('formsMetadata')) || [];
-    renderFormsList();
-    setupAccordion('detailsAccordionHeader');
-    dictateButtonHome.style.display = 'flex';
+    navigateTo('forma-page');
 });
 
+// Expose functions to the global scope for onclick attributes in dynamically generated HTML
 window.navigateTo = navigateTo;
-window.toggleFavorite = toggleFavorite;
+window.toggleFavorite = (formId) => {
+    console.log(`Toggling favorite for form ${formId}`);
+    // Implement logic here
+};
+window.toggleImportantNote = (noteId) => {
+    console.log(`Toggling important for note ${noteId}`);
+    // Implement logic here
+};
+window.deleteFormFromHome = async (formId) => {
+    console.log(`Deleting form ${formId} from home page`);
+    // Implement logic here
+};
