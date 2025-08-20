@@ -1,100 +1,65 @@
-// common.js
+// common.js — tiny helpers shared across app modules
 
-// Constants for icons
-export const playIconSVG = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>`;
-export const pauseIconSVG = `<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+// DOM helpers
+export const $ = (sel, root=document) => root.querySelector(sel);
+export const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
 
-// Utility to generate a unique ID
-export function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0,
-            v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
+// Utilities
+export const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() :
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 
-// Utility to create a debounced function
-export function debounce(func, delay) {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
-}
+export const debounce = (fn, wait=180) => {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+};
 
-// Global state variables for chronometer
-export let chronometerInterval = null;
-export let elapsedTime = 0;
+export const formatTime = (sec) => {
+  const s = Math.max(0, sec|0);
+  const m = Math.floor(s/60);
+  const r = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+};
 
-// Chronometer logic
-export function startChronometer(elementId) {
-    const chronometerElement = document.getElementById(elementId);
-    if (chronometerInterval) {
-        clearInterval(chronometerInterval);
-    }
-    const startTime = Date.now() - elapsedTime;
-    chronometerInterval = setInterval(() => {
-        elapsedTime = Date.now() - startTime;
-        let minutes = Math.floor(elapsedTime / 60000);
-        let seconds = Math.floor((elapsedTime % 60000) / 1000);
-        minutes = minutes < 10 ? '0' + minutes : minutes;
-        seconds = seconds < 10 ? '0' + seconds : seconds;
-        chronometerElement.textContent = `${minutes}:${seconds}`;
-    }, 1000);
-}
+// Toast
+export const toast = (msg='Saved') => {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); }, 1400);
+};
 
-export function stopChronometer() {
-    clearInterval(chronometerInterval);
-    chronometerInterval = null;
-}
+// Pages
+export const showPage = (id) => {
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $('#' + id).classList.add('active');
+  window.scrollTo({top:0, behavior:'instant'});
+};
 
-export function resetChronometer(elementId) {
-    stopChronometer();
-    elapsedTime = 0;
-    document.getElementById(elementId).textContent = "00:00";
-}
+// Storage (idb-keyval UMD)
+const store = window.idbKeyval;
 
-// Details accordion logic
-export function setupAccordion(headerId) {
-    const accordionHeader = document.getElementById(headerId);
-    if (accordionHeader) {
-        const accordionContent = accordionHeader.nextElementSibling;
-        const accordionIcon = accordionHeader.querySelector('.accordion-icon');
+export const storage = {
+  async get(key){ return await store.get(key) },
+  async set(key, val){ return await store.set(key, val) },
+  async del(key){ return await store.del(key) },
+  async keys(){ return await store.keys() }
+};
 
-        accordionHeader.addEventListener('click', () => {
-            accordionContent.classList.toggle('expanded');
-            accordionIcon.classList.toggle('expanded');
-            if (accordionContent.classList.contains('expanded')) {
-                accordionContent.style.maxHeight = accordionContent.scrollHeight + "px";
-            } else {
-                accordionContent.style.maxHeight = null;
-            }
-        });
-    }
-}
-
-// Show/hide page logic
-export function showPage(pageId) {
-    document.querySelectorAll('.page-section').forEach(page => {
-        page.classList.remove('active');
-        page.style.display = 'none';
-    });
-    const page = document.getElementById(pageId);
-    if (page) {
-        page.classList.add('active');
-        page.style.display = 'flex';
-    }
-}
-
-// Update navbar active state
-export function updateNavState(navId) {
-    document.querySelectorAll('.navbar-button').forEach(button => {
-        button.classList.remove('active');
-    });
-    const navButton = document.getElementById(navId);
-    if (navButton) {
-        navButton.classList.add('active');
-    }
-}
+// Chronometer
+export const Chrono = () => {
+  let start = 0, acc = 0, running = false, rafId = 0, cb = () => {};
+  const tick = () => {
+    if(!running) return;
+    cb((Date.now() - start + acc)/1000);
+    rafId = requestAnimationFrame(tick);
+  };
+  return {
+    on(fn){ cb = fn || (()=>{}); },
+    start(){ if(running) return; running = true; start = Date.now(); tick(); },
+    pause(){ if(!running) return; running = false; acc += Date.now() - start; cancelAnimationFrame(rafId); },
+    reset(){ running = false; acc = 0; cancelAnimationFrame(rafId); cb(0); }
+  };
+};
