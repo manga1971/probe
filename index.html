@@ -11,8 +11,10 @@
 <body>
 
     <div class="app-container">
-        <header class="app-header-compact" id="appHeader">
-            <h1 id="appTitle" class="app-title"><a href="#" id="homeNav">Forma</a></h1>
+        <header id="appHeader" class="app-header-fixed">
+            <h1 id="appTitle" class="app-title">
+                <a href="#" id="homeNavButton">Forma</a>
+            </h1>
             <div class="header-actions">
                 <input type="search" id="headerSearchInput" class="header-search-input" placeholder="Search forms...">
                 <button id="accountSettingsButton" class="icon-button" aria-label="Account Settings">
@@ -55,66 +57,69 @@
             </div>
 
             <div id="edit-page" class="page-section">
-                <div id="dictationContainer" class="dictation-container glass-container">
-                    <div class="container-header">
-                        <div id="formIdentifier" class="form-id-badge" style="display: none;">Form #</div>
-                        <button class="accordion-header" id="detailsAccordionHeader">
-                            Details
-                            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
-                        </button>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="metadata-fields">
-                            <label for="formTitle">Title:</label>
-                            <input type="text" id="formTitle" placeholder="Form title" autocomplete="off">
-                            <label for="formClient">Client:</label>
-                            <input type="text" id="formClient" placeholder="Client name" autocomplete="off">
-                            <label for="formCategory">Category:</label>
-                            <input type="text" id="formCategory" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
-                            <label for="formStatus">Status:</label>
-                            <select id="formStatus">
-                                <option value="not-started">New</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                            <label for="plannedDate">Planned date:</label>
-                            <input type="date" id="plannedDate">
-                            <label for="initialNotes">Notes:</label>
-                            <textarea id="initialNotes" placeholder="Add initial notes here..."></textarea>
-                            <button id="saveCharacteristicsButton" class="save-button">Save Characteristics</button>
+                <div class="edit-page-content custom-scrollbar">
+                    <div class="glass-container header-edit-page">
+                        <div class="container-header">
+                            <div id="formIdentifier" class="form-id-badge">Form #</div>
+                            <button class="accordion-header" id="detailsAccordionHeader">
+                                Details
+                                <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="accordion-icon"><path d="M7 10l5 5 5-5z"/></svg>
+                            </button>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="metadata-fields">
+                                <label for="formTitle">Title:</label>
+                                <input type="text" id="formTitle" placeholder="Form title" autocomplete="off">
+                                <label for="formClient">Client:</label>
+                                <input type="text" id="formClient" placeholder="Client name" autocomplete="off">
+                                <label for="formCategory">Category:</label>
+                                <input type="text" id="formCategory" placeholder="e.g., Legal, Medical, Project" autocomplete="off">
+                                <label for="formStatus">Status:</label>
+                                <select id="formStatus">
+                                    <option value="not-started">New</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                                <label for="plannedDate">Planned date:</label>
+                                <input type="date" id="plannedDate">
+                                <label for="initialNotes">Notes:</label>
+                                <textarea id="initialNotes" placeholder="Add initial notes here..."></textarea>
+                                <button id="saveCharacteristicsButton" class="save-button">Save Characteristics</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="new-note-container">
-                        <p class="new-note-label">New Note</p>
-                        <div id="transcriptionContent" class="text-display custom-scrollbar" contenteditable="true">
+                    
+                    <div class="glass-container note-item new-note-item">
+                        <div class="note-header">
+                            <span class="note-label">New Note</span>
+                        </div>
+                        <div id="newNoteContent" class="note-text" contenteditable="true">
                             Press "Start" to begin dictation...
                         </div>
                     </div>
-                    <div id="existingNotesContainer" class="existing-notes-container custom-scrollbar">
+
+                    <div id="existingNotesContainer" class="notes-list-container">
                         </div>
                 </div>
             </div>
         </main>
         
-        <button id="dictateButtonHome" class="floating-dictate-button">
-            <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.2-3c0 2.88-2.22 5.2-5 5.2-2.78 0-5-2.32-5-5.2H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.88c3.39-.49 6-3.39 6-6.92h-2.8z"/></svg>
-        </button>
-
-        <div id="dictationControls" class="player-controls-compact-fixed">
-             <div class="player-zone-1">
-                <button id="dictationToggleButton" class="control-button">
+        <div id="playerControls" class="player-controls-compact-fixed">
+            <div class="player-zone-1">
+                <button id="dictationToggleButton" class="control-button large">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.2-3c0 2.88-2.22 5.2-5 5.2-2.78 0-5-2.32-5-5.2H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.88c3.39-.49 6-3.39 6-6.92h-2.8z"/></svg>
                 </button>
-            </div>
-            <div class="player-zone-2">
                 <div id="pulsatingLed" class="pulsating-led"></div>
                 <span id="chronometer" class="chronometer">00:00</span>
             </div>
-            <div class="player-zone-3">
-                <button id="copyAndSaveButton" class="control-button">
+            <div class="player-zone-2">
+                <button id="copyButton" class="control-button">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                 </button>
-                <button id="deleteFormButton" class="control-button button-danger">
+                <button id="saveButton" class="control-button">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10V5.5L18.5 9H15z"/></svg>
+                </button>
+                <button id="deleteButton" class="control-button button-danger">
                     <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </button>
             </div>
