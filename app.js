@@ -26,12 +26,12 @@ const formCategory = document.getElementById('formCategory');
 const formStatus = document.getElementById('formStatus');
 const plannedDate = document.getElementById('plannedDate');
 const initialNotes = document.getElementById('initialNotes');
+const newNoteContent = document.getElementById('newNoteContent');
+const existingNotesContainer = document.getElementById('existingNotesContainer');
 const detailsAccordionHeader = document.getElementById('detailsAccordionHeader');
 const detailsAccordionContent = detailsAccordionHeader.nextElementSibling;
 const accordionIcon = detailsAccordionHeader.querySelector('.accordion-icon');
 const saveCharacteristicsButton = document.getElementById('saveCharacteristicsButton');
-const newNoteContent = document.getElementById('newNoteContent');
-const existingNotesContainer = document.getElementById('existingNotesContainer');
 const playerControls = document.getElementById('playerControls');
 const dictationToggleButton = document.getElementById('dictationToggleButton');
 const pulsatingLed = document.getElementById('pulsatingLed');
@@ -39,6 +39,7 @@ const chronometer = document.getElementById('chronometer');
 const copyButton = document.getElementById('copyButton');
 const saveButton = document.getElementById('saveButton');
 const deleteButton = document.getElementById('deleteButton');
+const playButton = document.getElementById('playButton'); // Added play button
 
 // Global state variables
 let allFormsMetadata = [];
@@ -46,7 +47,7 @@ let currentFormId = null;
 let isDictating = false;
 let recognition;
 let dictatedText = '';
-let currentFormRecordings = = '';
+let currentFormRecordings = '';
 
 // --- Navigation and Page Management ---
 function navigateTo(pageId, formId = null) {
@@ -237,12 +238,12 @@ async function createNewFormMetadata() {
     const formData = {
         id: currentFormId,
         formNumber: newFormNumber,
-        title: 'Untitled Form',
-        client: '',
-        category: '',
-        status: 'not-started',
-        notes: '',
-        plannedDate: '',
+        title: formTitle.value || `Form #${newFormNumber}`,
+        client: formClient.value,
+        category: formCategory.value,
+        status: formStatus.value,
+        notes: initialNotes.value,
+        plannedDate: plannedDate.value,
         createdAt: now.toISOString(),
         lastModified: now.toISOString(),
         isFavorite: false,
@@ -349,15 +350,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Expose functions to the global scope for onclick attributes in dynamically generated HTML
 window.navigateTo = navigateTo;
-window.toggleFavorite = (formId) => {
-    console.log(`Toggling favorite for form ${formId}`);
-    // Implement logic here
-};
-window.toggleImportantNote = (noteId) => {
-    console.log(`Toggling important for note ${noteId}`);
-    // Implement logic here
-};
-window.deleteFormFromHome = async (formId) => {
-    console.log(`Deleting form ${formId} from home page`);
-    // Implement logic here
-};
+window.toggleFavorite = toggleFavorite;
+window.deleteFormFromHome = deleteForm;
