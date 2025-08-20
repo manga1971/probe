@@ -144,53 +144,80 @@ body {
     gap: 1rem;
     padding: 1rem;
 }
-/* ... restul stilurilor pentru .filter-group, .list-container, .card-item etc. rămân neschimbate ... */
-
-/* Edit Page specific styles */
-.edit-page-content {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    flex: 1;
-    overflow-y: auto;
-}
-.header-edit-page {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-.new-note-item {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-.new-note-label {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: 1rem;
-}
-.note-item {
-    background: var(--color-glass-bg);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--color-glass-border);
-    box-shadow: 0 4px 6px var(--color-glass-shadow);
-    border-radius: 1rem;
-    padding: 1rem;
-    margin-bottom: 1rem;
+.filter-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
-.note-item .note-header {
+.filter-group label {
+    font-size: 0.8rem;
+    color: var(--color-text-subtle);
+}
+.filter-group select,
+.filter-group input {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--color-glass-border);
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+.list-container {
+    padding-top: 1rem;
+}
+.card-item {
+    position: relative;
+    border-radius: 1rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.card-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px var(--color-glass-shadow);
+}
+.card-item-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+.card-item-meta {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+.card-footer {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+.card-status-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+}
+.card-status-pill.not-started { background-color: var(--color-status-new); color: var(--color-background-dark); }
+.card-status-pill.in-progress { background-color: var(--color-status-in-progress); color: var(--color-background-dark); }
+.card-status-pill.completed { background-color: var(--color-status-completed); color: var(--color-background-dark); }
+
+.card-header-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.note-item .note-label {
-    font-size: 0.9rem;
-    color: var(--color-text-subtle);
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
 }
-.note-item .favorite-toggle {
+.favorite-toggle {
     background: none;
     border: none;
     cursor: pointer;
@@ -198,93 +225,8 @@ body {
     color: var(--color-text-secondary);
     transition: color 0.2s ease-in-out;
 }
-.note-item .favorite-toggle.active {
+.favorite-toggle.active {
     color: var(--color-accent-yellow);
-}
-.note-item .note-text {
-    white-space: pre-wrap;
-    font-size: 1rem;
-    line-height: 1.5;
-    color: var(--color-text-primary);
-    margin-top: 0.5rem;
-}
-.notes-list-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-/* Fixed player styles */
-.player-controls-compact-fixed {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    width: 100%;
-    max-width: 480px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
-    padding: 1rem 1rem 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.player-zone-1 {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.player-zone-2 {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: center;
-}
-.player-zone-3 {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.control-button {
-    background: none;
-    border: none;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    transition: background-color 0.2s, transform 0.2s;
-}
-.control-button.large {
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.control-button.large svg {
-    width: 28px;
-    height: 28px;
-}
-.pulsating-led {
-    width: 15px;
-    height: 15px;
-    background-color: var(--color-accent-red);
-    border-radius: 50%;
-    animation: pulse 1.5s infinite;
-    visibility: hidden;
-}
-.pulsating-led.active {
-    visibility: visible;
-}
-.chronometer {
-    font-size: 1.2rem;
-    color: var(--color-text-primary);
-    min-width: 50px;
-    text-align: center;
 }
 .floating-dictate-button {
     position: fixed;
